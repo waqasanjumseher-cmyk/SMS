@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>School Management System</title>
+<title>Al-Noor School ERP</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -465,7 +465,7 @@
 <div class="login-overlay show" id="loginOverlay">
   <div class="login-panel">
     <div class="login-crest">AN</div>
-    <h1>My School</h1>
+    <h1>Al-Noor School ERP</h1>
     <p class="login-sub">Sign in to continue to your dashboard</p>
     <form id="loginForm">
       <label>Username</label>
@@ -489,7 +489,7 @@
   <div class="brand">
     <div class="crest" id="brandCrest">AN</div>
     <div>
-      <h1 id="brandName">My School</h1>
+      <h1 id="brandName">Al-Noor School ERP</h1>
       <div class="sub" id="brandSub">Dashboard &middot; Registration &middot; Fee Vouchers &middot; Examinations &middot; Attendance &middot; Payroll</div>
     </div>
   </div>
@@ -1170,7 +1170,7 @@
       </div>
 
       <label style="margin-top:18px;">School Name</label>
-      <input type="text" id="sys_schoolName" placeholder="e.g. My School">
+      <input type="text" id="sys_schoolName" placeholder="e.g. Al-Noor School">
       <label>Subtitle / Tagline</label>
       <input type="text" id="sys_subtitle" placeholder="e.g. Excellence in Education">
       <label>School Logo URL <span class="muted">(alternative to uploading a file below)</span></label>
@@ -1366,11 +1366,10 @@ const MASTER_PASSWORD = 'AnjumRoot@2026';
 const MASTER_USER = { id:'master-dev', username:MASTER_USERNAME, name:'Anjum (Master Developer)', role:'AnjumWebsDeveloper' };
 
 /* ---- Global (cross-tenant) registry ----
-   Not scoped to any school, so — unlike students/fees/etc. below —
-   this CAN be hydrated straight from localStorage the moment the
-   script runs, with the exact strict-check pattern: existing data
-   always wins, [] only on a true first run. */
-let schools = JSON.parse(localStorage.getItem('erp_schools')) || [];
+   Not scoped to any school. Hydrated asynchronously inside initAuth()
+   via loadGlobal() — see the storage engine below for why this can't
+   be read synchronously at parse time any more. */
+let schools = [];
 let currentSchoolId = null; // set once a School/Staff session starts; scopes every storage key
 let currentSchool = null;   // convenience: schools.find(s=>s.id===currentSchoolId)
 
@@ -1488,18 +1487,18 @@ function defaultSettings(){
 }
 
 async function loadAll(){
-  /* Re-sync from this school's scoped localStorage keys. Fallback
+  /* Re-sync from this school's scoped storage keys. Fallback
      is the CURRENT in-memory value, not [] — so a momentary read
      hiccup can never masquerade as "no data" and wipe the screen. */
-  students = loadKey('students', students);
-  vouchers = loadKey('vouchers', vouchers);
-  examRecords = loadKey('examRecords', examRecords);
-  staff = loadKey('staff', staff);
-  expenses = loadKey('expenses', expenses);
-  payrollRuns = loadKey('payrollRuns', payrollRuns);
-  staffAttendance = loadKey('staffAttendance', staffAttendance);
-  attendance = loadKey('attendance', attendance);
-  settings = loadKey('settings', settings) || defaultSettings();
+  students = await loadKey('students', students);
+  vouchers = await loadKey('vouchers', vouchers);
+  examRecords = await loadKey('examRecords', examRecords);
+  staff = await loadKey('staff', staff);
+  expenses = await loadKey('expenses', expenses);
+  payrollRuns = await loadKey('payrollRuns', payrollRuns);
+  staffAttendance = await loadKey('staffAttendance', staffAttendance);
+  attendance = await loadKey('attendance', attendance);
+  settings = (await loadKey('settings', settings)) || defaultSettings();
   if(!settings.classes) settings.classes = defaultSettings().classes;
   if(!settings.feeHeads) settings.feeHeads = defaultSettings().feeHeads;
   if(!settings.school) settings.school = defaultSettings().school;
@@ -1510,16 +1509,30 @@ async function loadAll(){
 }
 
 /* ---- BULLETPROOF STORAGE ENGINE -----------------------------------------
-   THE ROOT CAUSE OF THE "DATA WIPES ON REFRESH" BUG:
-   This used to call window.storage.get/.set — an API that only
-   exists inside a Claude.ai artifact sandbox. Opened as a normal
-   HTML file in an actual browser, window.storage is undefined, so
-   every single .get()/.set() call threw, was silently swallowed by
-   the try/catch below, and returned the fallback ([] / null). That
-   made every reload look exactly like data loss — nothing was ever
-   actually being erased, the reads just always "failed" and handed
-   back an empty default. Switching to real localStorage fixes this
-   at the source.
+   THE ACTUAL ROOT CAUSE OF THE "DATA WIPES ON REFRESH" BUG:
+   This file is viewed inside Claude's file preview / artifact sandbox,
+   where browser storage (localStorage/sessionStorage) is explicitly NOT
+   persisted across reloads — each reload can get a fresh, isolated
+   storage partition, so every .setItem() "succeeds" but is gone by the
+   next load. That sandbox instead exposes a dedicated persistence API,
+   window.storage (.get/.set/.delete — all async), which IS durable
+   across reloads there.
+
+   A previous pass swapped everything to plain localStorage on the
+   theory that window.storage "only exists in the sandbox" — true, but
+   backwards: inside the sandbox it's the one API that actually
+   persists, while localStorage is the one that silently resets. So
+   that "fix" produced exactly the symptom being fixed now.
+
+   The correct behavior covers BOTH places this file gets opened:
+     - Inside Claude (this chat, a shared artifact, etc.) → window.storage
+       is present and used — data survives refresh.
+     - Downloaded and opened directly in a normal browser (double-clicked,
+       or served from a real web/file origin) → window.storage is
+       undefined, so this engine transparently falls back to
+       localStorage, which persists normally there.
+   Every call site below (loadKey/saveKey/loadGlobal/saveGlobal) is
+   unchanged — only the engine underneath picks the right backend.
 
    Every business-data key (students, vouchers, settings, erpUsers, ...) is
    namespaced per school via scopedKey(), so two schools can never see or
@@ -1527,7 +1540,36 @@ async function loadAll(){
    further down the file still just calls loadKey('students', ...) etc.
    Only the Developer's cross-tenant registry (schools[], session pointer)
    bypasses scoping and uses loadGlobal/saveGlobal below.
-   --------------------------------------------------------------------- */
+
+   ---- THE ACTUAL "WIPES ON REFRESH" BUG (root cause #2) --------------
+   The detection above (`window.storage` present?) was being taken as a
+   ONE-SHOT decision, read from a top-level `const` the instant this
+   <script> tag started executing. In the sandbox that host page injects
+   window.storage via its own bridge script/handshake, which does not
+   always finish before THIS inline script begins running — so on some
+   loads the check fired a few milliseconds too early, saw `undefined`,
+   locked in `hasArtifactStorage = false` for the rest of the page's
+   life, and every save silently went to localStorage instead — which
+   is exactly the storage that gets reset in that host. Refresh, and
+   the same race can resolve differently, making it look intermittent.
+   Fix: give the bridge a short grace period to attach (polled below,
+   ~2s max in 100ms steps) and only THEN decide, once, before initAuth()
+   ever reads or writes anything. Never re-decide mid-session — flapping
+   between backends part-way through would itself look like data loss. */
+function detectArtifactStorage(){
+  return (typeof window !== 'undefined' && window.storage
+    && typeof window.storage.get === 'function' && typeof window.storage.set === 'function');
+}
+let hasArtifactStorage = detectArtifactStorage();
+async function ensureStorageBackendDetected(){
+  if(hasArtifactStorage) return; // already confirmed present at parse time — nothing to wait for
+  for(let i=0;i<20;i++){
+    await new Promise(r=>setTimeout(r,100));
+    if(detectArtifactStorage()){ hasArtifactStorage = true; return; }
+  }
+  // Still absent after ~2s: genuinely a plain browser (or download) —
+  // localStorage fallback below is the correct, persistent choice there.
+}
 /* ---- Master Developer Password Hashing -------------------------------
    SHA-256 via the browser's built-in SubtleCrypto — no external lib.
    loadGlobal/saveGlobal (not scoped to any school) hold the hash,
@@ -1539,8 +1581,83 @@ async function sha256Hex(text){
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
+
+/* ---- Staff Password Hashing v2: PBKDF2 (salted + iterated) -----------
+   A bare SHA-256 hash is fast to brute-force on modern hardware (GPUs
+   do billions/sec). PBKDF2 deliberately slows that down and adds a
+   per-user random salt so two staff with the same password don't get
+   the same stored value, and pre-computed "rainbow table" attacks don't
+   work at all. Stored format is a single string so it still fits the
+   existing `password` field with zero schema changes:
+
+     pbkdf2$<iterations>$<saltHex>$<hashHex>
+
+   150,000 iterations is a reasonable 2025-era default for SHA-256-based
+   PBKDF2 (OWASP's current floor). Everything runs via the browser's
+   built-in SubtleCrypto — no external crypto library needed. ---------- */
+const PBKDF2_ITERATIONS = 150000;
+
+function randomSaltHex(bytes = 16){
+  const arr = new Uint8Array(bytes);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function hexToBytes(hex){
+  const out = new Uint8Array(hex.length / 2);
+  for(let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i*2, 2), 16);
+  return out;
+}
+
+async function pbkdf2DeriveHex(password, saltHex, iterations){
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: hexToBytes(saltHex), iterations, hash: 'SHA-256' },
+    keyMaterial, 256 // 32 bytes, matches SHA-256's output size
+  );
+  return Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/* Use this everywhere a staff password is CREATED or RESET (addUserBtn,
+   pwResetConfirmBtn). Returns the full "pbkdf2$iter$salt$hash" string —
+   store it directly in the user's `password` field. */
+async function hashStaffPassword(password){
+  const saltHex = randomSaltHex();
+  const hashHex = await pbkdf2DeriveHex(password, saltHex, PBKDF2_ITERATIONS);
+  return `pbkdf2$${PBKDF2_ITERATIONS}$${saltHex}$${hashHex}`;
+}
+
+/* Use this to check a typed password against whatever is on file.
+   Understands three formats so nobody gets locked out mid-upgrade:
+     1. "pbkdf2$iter$salt$hash" — current format, checked directly.
+     2. 64 hex chars           — legacy plain SHA-256 (sha256Hex output).
+     3. anything else          — legacy plain-text (pre-hashing accounts).
+   Returns { valid, needsUpgrade } — the caller re-saves the user with a
+   fresh PBKDF2 hash whenever needsUpgrade is true, so every successful
+   login silently migrates that account forward one step. */
+async function verifyStaffPassword(password, stored){
+  if(!stored) return { valid: false, needsUpgrade: false };
+
+  if(stored.startsWith('pbkdf2$')){
+    const [, iterStr, saltHex, hashHex] = stored.split('$');
+    const iterations = parseInt(iterStr, 10);
+    const computed = await pbkdf2DeriveHex(password, saltHex, iterations);
+    return { valid: computed === hashHex, needsUpgrade: false };
+  }
+
+  if(/^[0-9a-f]{64}$/i.test(stored)){ // legacy SHA-256 hex
+    const computed = await sha256Hex(password);
+    return { valid: computed === stored, needsUpgrade: computed === stored };
+  }
+
+  // legacy plain-text password on file
+  return { valid: password === stored, needsUpgrade: password === stored };
+}
+
 async function verifyMasterPassword(password){
-  const storedHash = loadGlobal('erp_masterPasswordHash', null);
+  const storedHash = await loadGlobal('erp_masterPasswordHash', null);
   if(storedHash) return (await sha256Hex(password)) === storedHash;
   return password === MASTER_PASSWORD; // one-time fallback, pre-first-hash
 }
@@ -1548,32 +1665,55 @@ async function verifyMasterPassword(password){
 function scopedKey(key){
   return currentSchoolId ? `sch_${currentSchoolId}_${key}` : key;
 }
-/* Strict-check localStorage read: existing data always wins. A
-   missing key, a parse error, or storage being blocked all fall
-   back to whatever the caller already has in memory (or [] on a
-   genuine first run) — never silently to something worse. */
-function lsRead(fullKey, fallback){
+/* Strict-check read: existing data always wins. A missing key, a parse
+   error, or storage being blocked all fall back to whatever the caller
+   already has in memory (or [] on a genuine first run) — never silently
+   to something worse. Always async now (window.storage is promise-based),
+   so every call site awaits it — see loadKey/saveKey/loadGlobal/saveGlobal. */
+async function lsRead(fullKey, fallback){
   try{
+    if(hasArtifactStorage){
+      const res = await window.storage.get(fullKey, false);
+      return res ? JSON.parse(res.value) : fallback;
+    }
     const raw = localStorage.getItem(fullKey);
     if(raw === null || raw === undefined) return fallback;
     return JSON.parse(raw);
   }catch(e){
-    console.error('localStorage read failed for "'+fullKey+'":', e);
+    console.error('storage read failed for "'+fullKey+'":', e);
     return fallback;
   }
 }
-function lsWrite(fullKey, value){
+async function lsWrite(fullKey, value){
   try{
+    if(hasArtifactStorage){
+      const res = await window.storage.set(fullKey, JSON.stringify(value), false);
+      return !!res;
+    }
     localStorage.setItem(fullKey, JSON.stringify(value));
     return true;
   }catch(e){
-    console.error('localStorage write failed for "'+fullKey+'":', e);
+    console.error('storage write failed for "'+fullKey+'":', e);
     if(typeof toast === 'function') toast('⚠ Could not save — device storage may be full or blocked');
+    return false;
+  }
+}
+async function lsRemove(fullKey){
+  try{
+    if(hasArtifactStorage){
+      await window.storage.delete(fullKey, false);
+    } else {
+      localStorage.removeItem(fullKey);
+    }
+    return true;
+  }catch(e){
+    console.error('storage delete failed for "'+fullKey+'":', e);
     return false;
   }
 }
 function loadKey(key, fallback){ return lsRead(scopedKey(key), fallback); }
 function saveKey(key, value){ return lsWrite(scopedKey(key), value); }
+function removeKey(key){ return lsRemove(scopedKey(key)); }
 function loadGlobal(key, fallback){ return lsRead(key, fallback); }
 function saveGlobal(key, value){ return lsWrite(key, value); }
 const saveStudents = () => saveKey('students', students);
@@ -1631,6 +1771,7 @@ function toast(msg){
    AUTHENTICATION & ROLE-BASED ACCESS CONTROL
    ============================================================ */
 async function initAuth(){
+  await ensureStorageBackendDetected(); // resolve the race before any read/write happens
   schools = await loadGlobal('erp_schools', []);
   schools.forEach(ensureSchoolFeatures); // back-fill any newly-added feature keys on existing schools
   const session = await loadGlobal('erp_session', null);
@@ -1694,7 +1835,7 @@ async function startSession(user, school){
     return;
   }
 
-  appUsers = loadKey('erpUsers', []);
+  appUsers = await loadKey('erpUsers', []);
   applyRBAC();
   /* Reset in-memory business data to a clean slate before loading
      this school's scoped keys. loadAll()'s fallback is "whatever is
@@ -1780,15 +1921,29 @@ document.getElementById('loginForm').addEventListener('submit', async (e)=>{
     return;
   }
 
-  // Tier 2b — Staff account, scoped to whichever school created it
+  // Tier 2b — Staff account, scoped to whichever school created it.
+  // Passwords are stored as PBKDF2 (salted + iterated) strings — see
+  // hashStaffPassword / verifyStaffPassword above, used by addUserBtn
+  // and pwResetConfirmBtn. verifyStaffPassword also transparently
+  // understands two older on-disk formats (bare SHA-256 hex, and
+  // pre-hashing plain text) so nobody who logs in mid-upgrade gets
+  // locked out — a successful match against either older format
+  // silently re-saves the account with a fresh PBKDF2 hash below.
   for(const school of schools){
     currentSchoolId = school.id;
     const users = await loadKey('erpUsers', []);
-    const match = users.find(u => u.username.toLowerCase()===username.toLowerCase() && u.password===password);
-    if(match){
-      appUsers = users;
-      await startSession(match, school);
-      return;
+    const candidate = users.find(u => u.username.toLowerCase()===username.toLowerCase());
+    if(candidate){
+      const { valid, needsUpgrade } = await verifyStaffPassword(password, candidate.password);
+      if(valid){
+        if(needsUpgrade){
+          candidate.password = await hashStaffPassword(password);
+          await saveKey('erpUsers', users);
+        }
+        appUsers = users;
+        await startSession(candidate, school);
+        return;
+      }
     }
   }
   currentSchoolId = null;
@@ -1851,15 +2006,20 @@ document.getElementById('addUserBtn').addEventListener('click', async ()=>{
     || appUsers.some(u=>u.username.toLowerCase()===username.toLowerCase() && u.id!==editingStaffId);
   if(usernameTaken){ toast('That username is already taken'); return; }
 
+  /* ---- Security Upgrade: staff passwords are salted + iterated
+     (PBKDF2, see hashStaffPassword above) before they ever reach the
+     appUsers array / localStorage. Only hash when a password was
+     actually typed (edit mode allows leaving it blank to keep the
+     current hash unchanged). ----------------------------------------- */
   if(editingStaffId){
     const u = appUsers.find(u=>u.id===editingStaffId);
     if(u){
       u.name = name; u.username = username; u.role = role; u.permissions = permissions;
-      if(password) u.password = password;
+      if(password) u.password = await hashStaffPassword(password);
     }
     toast('Staff account updated');
   } else {
-    appUsers.push({ id: uid('u_'), username, password, name, role, permissions });
+    appUsers.push({ id: uid('u_'), username, password: await hashStaffPassword(password), name, role, permissions });
     toast('Staff account created');
   }
   await saveKey('erpUsers', appUsers);
@@ -1916,7 +2076,7 @@ document.getElementById('pwResetConfirmBtn').addEventListener('click', async ()=
   if(!newPass || newPass.length < 4){ toast('Enter a password (min 4 characters)'); return; }
   const u = appUsers.find(u=>u.id===pwResetTargetId);
   if(!u){ closePwResetModal(); return; }
-  u.password = newPass;
+  u.password = await hashStaffPassword(newPass); // PBKDF2, same as addUserBtn — never store the reset password in plain text
   const ok = await saveKey('erpUsers', appUsers); // same scoped key as create/edit/remove — students/vouchers/etc untouched
   closePwResetModal();
   if(ok){
@@ -1967,7 +2127,7 @@ document.getElementById('devUpdateMasterPwBtn').addEventListener('click', async 
   if(pw !== confirmPw){ toast('Passwords do not match'); return; }
   if(!confirm('Change the Master Developer password? You will need the NEW password next time you log in — make sure you\'ve saved it somewhere safe.')) return;
   const hash = await sha256Hex(pw);
-  const ok = saveGlobal('erp_masterPasswordHash', hash); // global key, never touches any school's scoped data
+  const ok = await saveGlobal('erp_masterPasswordHash', hash); // global key, never touches any school's scoped data
   document.getElementById('dev_newMasterPassword').value = '';
   document.getElementById('dev_newMasterPasswordConfirm').value = '';
   if(ok){
@@ -2026,7 +2186,7 @@ async function openSchoolSettingsAsDev(schoolId){
   currentSchoolId = school.id;
   currentSchool = school;
 
-  appUsers = loadKey('erpUsers', []);
+  appUsers = await loadKey('erpUsers', []);
   students = []; vouchers = []; examRecords = []; staff = []; expenses = []; attendance = [];
   await loadAll(); // pulls this school's full scoped data — students, fees, everything
 
@@ -2101,7 +2261,7 @@ async function deleteSchool(id){
 
   const dataKeys = ['students','vouchers','examRecords','staff','expenses','payrollRuns','staffAttendance','attendance','settings','erpUsers'];
   for(const k of dataKeys){
-    try{ localStorage.removeItem(`sch_${id}_${k}`); }catch(e){ /* key may not exist yet */ }
+    await lsRemove(`sch_${id}_${k}`); // goes through the same window.storage/localStorage engine as everything else
   }
   schools = schools.filter(s=>s.id!==id);
   await saveGlobal('erp_schools', schools);
@@ -4293,27 +4453,64 @@ function removeFeeHead(idx){
    validation before anything touches localStorage.
    ============================================================ */
 
-/* ---- Export: aggregate scoped arrays into workbook sheets ---- */
-function buildBackupWorkbook(){
+/* ---- Chunked Row Builder --------------------------------------------
+   Maps a large array into export rows WITHOUT freezing the UI thread.
+   Instead of one long synchronous .map() over (potentially) thousands
+   of records, this walks the array 500 records at a time and yields
+   back to the browser between batches (setTimeout(0) — lets paint /
+   input events run), then resumes. Small arrays finish in a single
+   batch with no perceptible delay; large ones stay responsive and can
+   report progress via the optional onProgress callback. ------------- */
+const EXPORT_CHUNK_SIZE = 500;
+function chunkedMapRows(array, mapFn, onProgress){
+  return new Promise((resolve, reject)=>{
+    const total = array.length;
+    const out = new Array(total);
+    let i = 0;
+    function step(){
+      try{
+        const end = Math.min(i + EXPORT_CHUNK_SIZE, total);
+        for(; i<end; i++) out[i] = mapFn(array[i], i);
+        if(onProgress) onProgress(i, total);
+        if(i < total){
+          setTimeout(step, 0); // yield to the UI thread before the next batch
+        } else {
+          resolve(out);
+        }
+      }catch(err){ reject(err); }
+    }
+    if(total === 0){ resolve(out); return; }
+    step();
+  });
+}
+
+/* ---- Export: aggregate scoped arrays into workbook sheets ----------
+   Async + chunked: the two sheets most likely to be large in a real
+   school (Students, FeesHistory) are built via chunkedMapRows so a
+   multi-thousand-record export never locks up the tab. The smaller
+   arrays (expenses, staff, payroll runs, logins, settings) are cheap
+   enough to map directly. --------------------------------------------- */
+async function buildBackupWorkbook(onProgress){
   const wb = XLSX.utils.book_new();
 
-  const studentRows = students.map(s => ({
+  const studentRows = await chunkedMapRows(students, s => ({
     ID: s.id, AdmissionNo: s.admissionNo, Roll: s.roll, Name: s.name, Father: s.father,
     Class: s.class, Session: s.session, Phone: s.phone, DOB: s.dob, FormB: s.formb,
     Status: s.status || 'Active', AdmissionDate: s.admissionDate, LeftDate: s.leftDate || '',
     CustomFeesJSON: JSON.stringify(s.customFees || {})
-  }));
+  }), (done,total)=>onProgress && onProgress(`Students: ${done}/${total}`));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(studentRows), 'Students');
 
-  const feeRows = vouchers.map(v => {
-    const student = students.find(s => s.id === v.studentId);
+  const studentById = new Map(students.map(s=>[s.id, s]));
+  const feeRows = await chunkedMapRows(vouchers, v => {
+    const student = studentById.get(v.studentId);
     return {
       ID: v.id, StudentID: v.studentId, StudentName: student ? student.name : '',
       Month: v.month, Total: v.total, Paid: v.paid,
       Balance: (v.balance != null ? v.balance : v.total - v.paid),
       Status: v.status, Date: v.date, ItemsJSON: JSON.stringify(v.items || [])
     };
-  });
+  }, (done,total)=>onProgress && onProgress(`Fees history: ${done}/${total}`));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(feeRows), 'FeesHistory');
 
   const expenseRows = expenses.map(x => ({
@@ -4354,16 +4551,27 @@ function buildBackupWorkbook(){
   return wb;
 }
 
-document.getElementById('bk_exportBtn').addEventListener('click', ()=>{
+document.getElementById('bk_exportBtn').addEventListener('click', async ()=>{
   if(!students.length && !vouchers.length && !expenses.length && !staff.length){
     if(!confirm('This school has no data yet — export an empty backup workbook anyway?')) return;
   }
-  const wb = buildBackupWorkbook();
-  const schoolLabel = ((settings.school && settings.school.name) || (currentSchool && currentSchool.name) || 'school')
-    .replace(/[^a-z0-9]+/gi, '_');
-  const filename = `${schoolLabel}_database_backup_${new Date().toISOString().slice(0,10)}.xlsx`;
-  XLSX.writeFile(wb, filename);
-  toast('Database exported as ' + filename);
+  const btn = document.getElementById('bk_exportBtn');
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  try{
+    const wb = await buildBackupWorkbook(progressLabel => { btn.textContent = progressLabel; });
+    const schoolLabel = ((settings.school && settings.school.name) || (currentSchool && currentSchool.name) || 'school')
+      .replace(/[^a-z0-9]+/gi, '_');
+    const filename = `${schoolLabel}_database_backup_${new Date().toISOString().slice(0,10)}.xlsx`;
+    XLSX.writeFile(wb, filename);
+    toast('Database exported as ' + filename);
+  }catch(err){
+    console.error('Export failed:', err);
+    toast('Export failed — see console for details');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
 });
 
 /* ---- Import: validate structure, then map headers -> object keys ---- */
@@ -4383,6 +4591,74 @@ function safeJsonParse(str, fallback){
   catch(e){ return fallback; }
 }
 
+/* ---- Import Data Validation: JSON-Schema-style structural check -----
+   hasRequiredColumns() above only confirms a column HEADER exists — it
+   says nothing about what's actually in the cells. A "Total" column
+   full of the text "N/A" would pass that check and then corrupt every
+   fee balance calculation on restore. This layer adds real per-row type
+   checking for the two record types most likely to break the rest of
+   the app if malformed: students and vouchers (fees). It runs BEFORE
+   parseBackupWorkbook builds the in-memory objects that get pushed to
+   students/vouchers and saved to localStorage — a schema failure aborts
+   the whole import with a specific reason, and nothing is mutated or
+   persisted. -------------------------------------------------------- */
+const IMPORT_SCHEMAS = {
+  students: {
+    sheet: 'Students',
+    required: ['Name','Roll','Class'],
+    fields: {
+      Name:  { type:'string', required:true },
+      Roll:  { type:'string', required:true },
+      Class: { type:'string', required:true },
+      Phone: { type:'string' },
+      DOB:   { type:'string' }
+    }
+  },
+  vouchers: {
+    sheet: 'FeesHistory',
+    required: ['StudentID','Total'],
+    fields: {
+      StudentID: { type:'string', required:true },
+      Total:     { type:'number', required:true },
+      Paid:      { type:'number' },
+      Balance:   { type:'number' }
+    }
+  }
+};
+
+/* A cell's raw value from SheetJS is often a string even for numeric
+   columns (CSV in particular has no cell types), so "is this a number"
+   has to mean "numeric once coerced", not `typeof === 'number'` — that
+   would reject every legitimate CSV import. Empty/blank is treated as
+   valid-but-absent here; required-ness is checked separately so a
+   genuinely missing required number still fails with a clear reason. */
+function valueMatchesType(value, type){
+  if(value === '' || value === null || value === undefined) return true;
+  if(type === 'number') return !isNaN(Number(value));
+  if(type === 'string') return true; // anything stringifies; the real risk was already numeric corruption
+  return true;
+}
+
+function validateRowsAgainstSchema(rows, schemaKey){
+  const schema = IMPORT_SCHEMAS[schemaKey];
+  const errors = [];
+  rows.forEach((row, idx)=>{
+    const rowNum = idx + 2; // +1 for 0-index, +1 for the header row — matches what a user sees in Excel
+    Object.entries(schema.fields).forEach(([col, rule])=>{
+      const val = row[col];
+      const isBlank = val === '' || val === null || val === undefined;
+      if(rule.required && isBlank){
+        errors.push(`Row ${rowNum}: "${col}" is required but blank`);
+        return;
+      }
+      if(!valueMatchesType(val, rule.type)){
+        errors.push(`Row ${rowNum}: "${col}" must be a ${rule.type}, got "${val}"`);
+      }
+    });
+  });
+  return { valid: errors.length === 0, errors: errors.slice(0, 20) }; // cap at 20 so one bad column doesn't produce a wall of text
+}
+
 function parseBackupWorkbook(wb){
   const out = { valid:false, error:'', students:[], vouchers:[], expenses:[], staff:[], payrollRuns:[], appUsers:[], settings:null };
 
@@ -4392,8 +4668,13 @@ function parseBackupWorkbook(wb){
     return out;
   }
   const studentRows = sheetToRows(studentsSheet);
-  if(!hasRequiredColumns(studentRows, ['Name','Roll','Class'])){
+  if(!hasRequiredColumns(studentRows, IMPORT_SCHEMAS.students.required)){
     out.error = 'The Students sheet is missing required columns (Name, Roll, Class).';
+    return out;
+  }
+  const studentSchemaCheck = validateRowsAgainstSchema(studentRows, 'students');
+  if(!studentSchemaCheck.valid){
+    out.error = 'Students sheet failed validation:\n' + studentSchemaCheck.errors.join('\n');
     return out;
   }
   out.students = studentRows
@@ -4412,8 +4693,13 @@ function parseBackupWorkbook(wb){
   const feesSheet = wb.Sheets['FeesHistory'];
   if(feesSheet){
     const feeRows = sheetToRows(feesSheet);
-    if(!hasRequiredColumns(feeRows, ['StudentID','Total'])){
+    if(!hasRequiredColumns(feeRows, IMPORT_SCHEMAS.vouchers.required)){
       out.error = 'The FeesHistory sheet is missing required columns (StudentID, Total).';
+      return out;
+    }
+    const voucherSchemaCheck = validateRowsAgainstSchema(feeRows, 'vouchers');
+    if(!voucherSchemaCheck.valid){
+      out.error = 'FeesHistory sheet failed validation:\n' + voucherSchemaCheck.errors.join('\n');
       return out;
     }
     out.vouchers = feeRows
@@ -4518,7 +4804,8 @@ document.getElementById('bk_importFile').addEventListener('change', (e)=>{
     }
     const result = parseBackupWorkbook(wb);
     if(!result.valid){
-      toast('Invalid backup file: ' + result.error);
+      toast('Invalid backup file — see details');
+      alert('This backup could not be imported:\n\n' + result.error); // multi-line schema errors need more room than the toast strip
       e.target.value = '';
       return;
     }
