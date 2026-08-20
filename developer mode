@@ -111,7 +111,7 @@ var PWA_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192
     padding:14px 20px;
     display:flex;align-items:center;justify-content:space-between;gap:14px;
     box-shadow:0 2px 10px rgba(0,0,0,.15);
-    position:sticky;top:0;z-index:500;
+    position:relative;z-index:500;
   }
   header.top .brand{display:flex;align-items:center;gap:12px;min-width:0;}
   header.top .crest{
@@ -139,8 +139,9 @@ var PWA_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192
   .app-layout{display:flex;align-items:stretch;min-height:calc(100vh - 71px);}
   .sidebar{
     width:250px;flex-shrink:0;background:var(--sidebar-bg);color:#e7ecf1;
-    padding:16px 0;position:sticky;top:71px;align-self:flex-start;
-    height:calc(100vh - 71px);overflow-y:auto;
+    padding:16px 0;position:sticky;top:0;align-self:flex-start;
+    height:100vh;overflow-y:auto;overflow-x:hidden;
+    transition:width .2s ease;
   }
   .sidebar-nav{display:flex;flex-direction:column;gap:2px;padding:0 10px;}
   .sidebar-nav .tab-btn{
@@ -155,6 +156,45 @@ var PWA_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192
   }
   .sidebar-backdrop.show{display:block;}
 
+  /* ---- Desktop collapse toggle (pin/arrow, sits above the nav groups) ---- */
+  .sidebar-collapse-row{display:flex;justify-content:flex-end;padding:0 14px 10px;}
+  .sidebar-collapse-btn{
+    background:#ffffff12;border:1px solid #ffffff2a;color:#e7ecf1;
+    width:30px;height:30px;border-radius:7px;cursor:pointer;font-size:14px;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    transition:transform .2s ease;
+  }
+  .sidebar-collapse-btn:hover{background:#ffffff22;}
+
+  /* ---- Accordion nav groups ---- */
+  .nav-group{margin-bottom:4px;}
+  .nav-group-header{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    width:100%;text-align:left;background:transparent;border:none;cursor:pointer;
+    color:#8ea0b3;padding:10px 14px 10px 10px;font-size:11px;font-weight:700;
+    letter-spacing:.6px;text-transform:uppercase;border-radius:8px;
+  }
+  .nav-group-header:hover{color:#fff;background:#ffffff0d;}
+  .nav-group-header .chev{transition:transform .2s ease;font-size:10px;flex-shrink:0;}
+  .nav-group.open .nav-group-header .chev{transform:rotate(90deg);}
+  .nav-group-body{display:flex;flex-direction:column;gap:2px;max-height:0;overflow:hidden;transition:max-height .22s ease;}
+  .nav-group.open .nav-group-body{max-height:800px;}
+  .nav-pinned{display:flex;flex-direction:column;gap:2px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #ffffff17;}
+
+  /* ---- Desktop collapsed (icon-only) sidebar ---- */
+  .sidebar.collapsed{width:70px;}
+  .sidebar.collapsed .sidebar-collapse-row{justify-content:center;}
+  .sidebar.collapsed .sidebar-collapse-btn{transform:rotate(180deg);}
+  .sidebar.collapsed .nav-group-header .label-text,
+  .sidebar.collapsed .nav-group-header .chev{display:none;}
+  .sidebar.collapsed .nav-group-header{justify-content:center;padding:10px 0;}
+  .sidebar.collapsed .nav-group-body{max-height:none!important;}
+  .sidebar.collapsed .sidebar-nav .tab-btn,
+  .sidebar.collapsed .nav-pinned .tab-btn{
+    white-space:nowrap;overflow:hidden;text-overflow:clip;padding:12px 0;text-align:center;
+  }
+  .sidebar.collapsed .sidebar-nav{padding:0 8px;}
+
   main{flex:1;min-width:0;max-width:1180px;margin:22px auto;padding:0 20px 60px;}
   .panel{display:none;}
   .panel.active{display:block;animation:fade .25s ease;}
@@ -168,6 +208,20 @@ var PWA_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192
       transform:translateX(-100%);transition:transform .25s ease;box-shadow:4px 0 24px rgba(0,0,0,.3);
     }
     .sidebar.open{transform:translateX(0);}
+    /* On mobile the sidebar is a full drawer, not an icon rail — the
+       desktop collapse toggle and its collapsed-width rules don't apply. */
+    .sidebar.collapsed{width:250px;}
+    .sidebar-collapse-row{display:none;}
+    .sidebar.collapsed .nav-group-header .label-text,
+    .sidebar.collapsed .nav-group-header .chev{display:flex;}
+    .sidebar.collapsed .nav-group-header{justify-content:space-between;padding:10px 14px 10px 10px;}
+    .sidebar.collapsed .nav-group-body{max-height:0!important;}
+    .sidebar.collapsed .nav-group.open .nav-group-body{max-height:800px!important;}
+    .sidebar.collapsed .sidebar-nav .tab-btn,
+    .sidebar.collapsed .nav-pinned .tab-btn{
+      white-space:normal;overflow:visible;text-align:left;padding:12px 14px;
+    }
+    .sidebar.collapsed .sidebar-nav{padding:0 10px;}
     main{margin:16px auto;padding:0 14px 50px;}
   }
   /* ---- Narrow phones: the header itself needs to shrink too, not
@@ -229,6 +283,47 @@ var PWA_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192
   .checkfee input[type=checkbox]{width:auto;}
   .checkfee input[type=number]{width:100px;}
   .checkfee span{flex:1;font-size:13.5px;}
+
+  /* ---- User Settings Modal: tabbed permissions/parameters UI ---- */
+  .usm-box{max-width:640px;width:100%;padding:0;}
+  .usm-head{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:18px 22px;background:var(--navy);color:#fff;
+  }
+  .usm-head h3{margin:0;font-size:16px;}
+  .usm-head .usm-sub{margin:2px 0 0;font-size:12px;color:#ffffffb0;}
+  .usm-head .close-x{background:transparent;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1;opacity:.85;}
+  .usm-head .close-x:hover{opacity:1;}
+  .usm-tabstrip{display:flex;gap:2px;padding:12px 18px 0;background:var(--paper);border-bottom:1px solid var(--line);}
+  .usm-tab-btn{
+    flex:1;background:transparent;border:none;cursor:pointer;padding:10px 8px;
+    font-size:12.5px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;
+    display:flex;align-items:center;justify-content:center;gap:6px;border-radius:6px 6px 0 0;
+  }
+  .usm-tab-btn:hover{background:#ffffffa0;color:var(--ink);}
+  .usm-tab-btn.active{color:var(--teal);border-bottom-color:var(--teal);background:#fff;}
+  .usm-body{padding:20px 22px;max-height:60vh;overflow-y:auto;}
+  .usm-pane{display:none;}
+  .usm-pane.active{display:block;animation:fade .18s ease;}
+  .usm-section{margin-bottom:18px;}
+  .usm-section:last-child{margin-bottom:0;}
+  .usm-section-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .usm-section-head .ico{font-size:15px;}
+  .usm-section-head h4{margin:0;font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--navy);}
+  .usm-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;}
+  .usm-hint{margin:0 0 10px;font-size:11.5px;color:var(--muted);}
+  .usm-row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .usm-field label{display:block;font-size:12px;font-weight:600;color:var(--ink);margin-bottom:5px;}
+  .usm-field .muted-sm{font-size:11px;color:var(--muted);margin-top:4px;}
+  .usm-status-toggle{display:flex;gap:8px;}
+  .usm-status-toggle button{
+    flex:1;padding:9px;border-radius:8px;border:1px solid var(--line);background:#fff;
+    cursor:pointer;font-size:12.5px;font-weight:600;color:var(--muted);
+  }
+  .usm-status-toggle button.on-active{background:#dcf6e8;border-color:#0e7a4f;color:#0e7a4f;}
+  .usm-status-toggle button.on-inactive{background:#fbe4e1;border-color:var(--danger);color:var(--danger);}
+  .usm-footer{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;border-top:1px solid var(--line);background:var(--paper);}
+  .usm-empty{font-size:12.5px;color:var(--muted);}
   .total-line{display:flex;justify-content:space-between;padding:10px 0;font-size:15px;font-weight:700;border-top:2px solid var(--navy);margin-top:8px;}
   .modal-bg{
     display:none;position:fixed;inset:0;background:#0b1520cc;z-index:500;align-items:flex-start;justify-content:center;padding:30px 10px;overflow:auto;
@@ -238,6 +333,24 @@ var PWA_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192
   .modal-actions{padding:14px 20px;background:#f2f1eb;display:flex;gap:10px;flex-wrap:wrap;}
   .modal-actions button{margin-top:0;}
   .close-x{float:right;cursor:pointer;font-size:20px;color:var(--muted);}
+
+  /* ---- Full-screen responsive container for internal admin modals
+     (Settings & Configuration / Provision New Tenant / Remote Control) —
+     these are workspaces, not printable documents, so they get the
+     full viewport instead of a small centered card. !important guards
+     against .modal-box.wide (max-width:920px, used by real print docs)
+     winning the cascade when both classes land on the same element. ---- */
+  .modal-bg.admin-fullscreen-active{padding:0 !important;align-items:stretch !important;}
+  .modal-box.admin-fullscreen{
+    max-width:100vw !important;width:100vw !important;
+    height:100vh !important;max-height:100vh !important;
+    display:flex;flex-direction:column;border-radius:0 !important;margin:0;
+  }
+  .modal-box.admin-fullscreen #printArea{flex:1 !important;min-height:0;overflow:hidden;width:100% !important;max-width:none !important;margin:0 !important;}
+  .admin-fullscreen-wrap{height:100%;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;}
+  .admin-fullscreen-scroll{height:100%;box-sizing:border-box;overflow-y:auto;}
+  #tsm_body{display:none;flex-direction:column;flex:1;min-height:0;}
+  #tsm_body.show{display:flex;}
 
   /* ---- Dashboard ---- */
   .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;}
@@ -631,7 +744,7 @@ var PWA_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192
 
   /* ---- Developer floating "Return to Dev Dashboard" banner ---- */
   .dev-float-banner{
-    display:none;position:sticky;top:71px;z-index:450;
+    display:none;position:sticky;top:0;z-index:450;
     background:linear-gradient(120deg,var(--gold),#e0ab4f);color:#2a1c00;
     padding:10px 20px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
     font-size:13.5px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.15);
@@ -703,15 +816,24 @@ var PWA_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192
   .dcc-card-stats > div{flex:1;}
   .dcc-card-stats .n{font-size:19px;font-weight:800;color:var(--dcc-text);}
   .dcc-card-stats .l{font-size:10px;color:var(--dcc-text-muted);text-transform:uppercase;letter-spacing:.4px;margin-top:2px;}
-  .dcc-card-actions{display:flex;gap:8px;}
-  .dcc-card-actions .btn{margin-top:0;flex:1;justify-content:center;font-size:12px;padding:8px 8px;}
+  .dcc-card-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .dcc-card-actions .btn{margin-top:0;flex:1 1 calc(50% - 4px);min-width:110px;justify-content:center;font-size:12px;padding:8px 8px;}
 
-  .dcc-console{background:var(--dcc-card);border:1px solid var(--dcc-border);border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(15,23,42,.06);}
-  .dcc-console-tabs{display:flex;flex-wrap:wrap;border-bottom:1px solid var(--dcc-border);background:var(--dcc-bg-alt);}
-  .dcc-tab-btn{background:transparent;border:none;color:var(--dcc-text-dim);padding:14px 18px;font-size:12.5px;font-weight:700;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
+  /* Settings & Configuration console — vertical left sidebar nav with a
+     scrollable right-hand content pane, so it can fill a full-screen
+     modal cleanly instead of a horizontal tab strip. */
+  .dcc-console{background:var(--dcc-card);border:1px solid var(--dcc-border);border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(15,23,42,.06);display:flex;flex:1;min-height:0;}
+  .dcc-console-tabs{display:flex;flex-direction:column;flex:0 0 240px;overflow-y:auto;border-right:1px solid var(--dcc-border);border-bottom:none;background:var(--dcc-bg-alt);}
+  .dcc-tab-btn{background:transparent;border:none;color:var(--dcc-text-dim);padding:14px 18px;font-size:12.5px;font-weight:700;cursor:pointer;border-bottom:none;border-left:3px solid transparent;white-space:nowrap;text-align:left;}
   .dcc-tab-btn:hover{color:var(--dcc-text);}
-  .dcc-tab-btn.active{color:var(--dcc-text);border-bottom-color:var(--dcc-accent);}
-  .dcc-console-body{padding:22px 22px 26px;}
+  .dcc-tab-btn.active{color:var(--dcc-text);border-left-color:var(--dcc-accent);background:var(--dcc-card);}
+  .dcc-console-body{padding:22px 22px 26px;flex:1;min-height:0;overflow-y:auto;}
+  @media(max-width:760px){
+    .dcc-console{flex-direction:column;}
+    .dcc-console-tabs{flex:0 0 auto;flex-direction:row;overflow-x:auto;overflow-y:hidden;border-right:none;border-bottom:1px solid var(--dcc-border);}
+    .dcc-tab-btn{border-left:none;border-bottom:3px solid transparent;}
+    .dcc-tab-btn.active{border-left-color:transparent;border-bottom-color:var(--dcc-accent);}
+  }
   .dcc-tab-pane{display:none;}
   .dcc-tab-pane.active{display:block;animation:fade .2s ease;}
 
@@ -743,6 +865,109 @@ var PWA_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192
   #panel-devcontrol .btn.ghost{background:transparent;color:var(--dcc-accent);border:1px solid var(--dcc-accent);}
   #panel-devcontrol .dcc-card-actions .btn.gold{color:#2a1c00;}
   .dcc-tab-pane .toggle-label span{color:var(--dcc-text-muted);}
+
+  /* ============================================================
+     PHASE 2: COMPACT SINGLE-SCREEN TABBED REDESIGN (Zero-Scroll)
+     Everything below is purely presentational / layout — every
+     element id referenced by existing JS (devOverviewGrid,
+     devSchoolCardsGrid, devSchoolsTable, cloudConfigCard,
+     devGlobalFlagsBox, devMasterPwCard, devHexCustomizer, etc.)
+     is kept exactly as-is so no render function needed changes.
+     ============================================================ */
+  #panel-devcontrol[data-dcc-theme="dark"]{
+    --dcc-bg:#0b1220; --dcc-bg-alt:#121c30; --dcc-card:#161f36;
+    --dcc-border:#28324c; --dcc-text:#eef1f8; --dcc-text-dim:#aab3c9;
+    --dcc-text-muted:#7a869e; --dcc-accent:#e7b768; --dcc-hover:#17a190;
+  }
+  #panel-devcontrol.dcc-compact{
+    display:flex;flex-direction:column;gap:0;
+  }
+  /* ---- Command Center top bar: now just a slim strip with a hamburger
+     trigger + current-section label + theme toggle. The actual section
+     list (Tenants & Users, License Keys, etc.) lives in the .dcc-drawer
+     below so the top of the screen stays clean and concise. ---- */
+  .dcc-topbar{
+    position:sticky;top:0;z-index:420;
+    display:flex;align-items:center;gap:10px;
+    background:var(--dcc-card);border:1px solid var(--dcc-border);border-radius:14px;
+    padding:8px 10px;margin-bottom:16px;box-shadow:0 2px 10px rgba(15,23,42,.08);
+  }
+  .dcc-drawer-btn{
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    width:38px;height:38px;border-radius:10px;cursor:pointer;font-size:17px;
+    background:var(--dcc-bg-alt);border:1px solid var(--dcc-border);color:var(--dcc-text);
+  }
+  .dcc-drawer-btn:hover{background:var(--dcc-accent);color:#2a1c00;}
+  .dcc-topbar-current{flex:1;min-width:0;font-size:14px;font-weight:700;color:var(--dcc-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .dcc-topbar-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+  .dcc-theme-toggle{
+    background:var(--dcc-bg-alt);border:1px solid var(--dcc-border);color:var(--dcc-text-dim);
+    width:38px;height:38px;border-radius:10px;cursor:pointer;font-size:16px;flex-shrink:0;
+  }
+  .dcc-theme-toggle:hover{color:var(--dcc-text);}
+
+  /* ---- Command Center left drawer: houses the section list that used
+     to be a horizontal tab row. Off-canvas by default on every width;
+     opened via the hamburger, closed via backdrop / X / picking a tab. ---- */
+  .dcc-drawer-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:559;}
+  .dcc-drawer-backdrop.show{display:block;}
+  .dcc-drawer{
+    position:fixed;top:0;left:0;height:100vh;width:280px;max-width:82vw;z-index:560;
+    background:var(--dcc-card);border-right:1px solid var(--dcc-border);
+    box-shadow:4px 0 24px rgba(0,0,0,.25);
+    transform:translateX(-100%);transition:transform .22s ease;
+    display:flex;flex-direction:column;overflow-y:auto;
+  }
+  .dcc-drawer.open{transform:translateX(0);}
+  .dcc-drawer-head{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:16px 16px 12px;border-bottom:1px solid var(--dcc-border);
+    color:var(--dcc-text);font-weight:700;font-size:14px;
+  }
+  .dcc-drawer-close{background:transparent;border:none;color:var(--dcc-text-dim);font-size:18px;cursor:pointer;}
+  .dcc-topbar-tabs{display:flex;flex-direction:column;gap:4px;flex:1;padding:10px;}
+  .dcc-maintab-btn{
+    display:flex;align-items:center;gap:9px;background:transparent;border:none;
+    color:var(--dcc-text-dim);padding:12px 14px;font-size:13.5px;font-weight:700;
+    border-radius:10px;cursor:pointer;white-space:normal;text-align:left;transition:.15s ease;
+  }
+  .dcc-maintab-btn:hover{background:var(--dcc-bg-alt);color:var(--dcc-text);}
+  .dcc-maintab-btn.active{background:var(--dcc-accent);color:#2a1c00;}
+  .dcc-maintab-btn .cnt{
+    background:rgba(0,0,0,.18);border-radius:20px;padding:1px 8px;font-size:11px;font-weight:800;margin-left:auto;
+  }
+  .dcc-maintab-btn.active .cnt{background:rgba(0,0,0,.28);}
+
+  .dcc-maintab-pane{display:none;}
+  .dcc-maintab-pane.active{display:flex;flex-direction:column;gap:16px;animation:fade .18s ease;}
+
+  .dcc-scroll{overflow-y:auto;max-height:calc(100vh - 260px);padding-right:4px;}
+  .dcc-scroll.short{max-height:calc(100vh - 420px);}
+  .dcc-scroll::-webkit-scrollbar{width:8px;}
+  .dcc-scroll::-webkit-scrollbar-thumb{background:var(--dcc-border);border-radius:8px;}
+
+  .dcc-kpi-bar.compact{margin-bottom:0;}
+
+  /* Status badges with live-status dots, per spec: Active 🟢 / Suspended 🔴 / Pending 🟡 */
+  .dcc-status-badge{display:inline-flex;align-items:center;gap:5px;}
+  .dcc-status-badge.suspended{background:#fde3e1;color:#b3261e;}
+  .dcc-status-badge .dot{font-size:8px;line-height:1;}
+
+  .dcc-two-col{display:grid;grid-template-columns:1.1fr .9fr;gap:16px;align-items:start;}
+  @media(max-width:1100px){.dcc-two-col{grid-template-columns:1fr;}}
+
+  /* License Keys tab */
+  .dcc-lk-output{
+    width:100%;font-family:monospace;font-size:12px;padding:10px;border-radius:8px;
+    border:1px solid var(--dcc-border);background:var(--dcc-bg-alt);color:var(--dcc-text);
+    resize:vertical;min-height:70px;word-break:break-all;
+  }
+  #devLicenseKeysTable td{vertical-align:top;font-size:12.5px;}
+  #devLicenseKeysTable .lk-key{font-family:monospace;font-size:11px;word-break:break-all;color:var(--dcc-text-muted);}
+
+  /* Feature Requests tab */
+  #devFeatureRequestsTable td{vertical-align:middle;}
+  .dcc-empty-state{padding:34px 10px;text-align:center;color:var(--dcc-text-muted);font-size:13px;}
 
   /* ---- Universal Hex-Code Theme Customizer (Developer Console + School Settings) ---- */
   .hex-customizer{display:flex;flex-direction:column;gap:10px;margin-top:10px;}
@@ -1011,21 +1236,49 @@ html[dir="rtl"] .combo-list{text-align:right;}
 <div class="app-layout">
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
   <aside class="sidebar" id="sidebar">
+    <div class="sidebar-collapse-row">
+      <button type="button" class="sidebar-collapse-btn" id="sidebarCollapseBtn" aria-label="Collapse sidebar" title="Collapse sidebar">◀</button>
+    </div>
     <nav class="sidebar-nav">
-      <button class="tab-btn active" data-tab="dashboard" data-i18n="nav_dashboard">📊 Dashboard</button>
-      <button class="tab-btn" data-tab="reg" data-i18n="nav_reg">🧑‍🎓 Student Registration</button>
-      <button class="tab-btn" data-tab="fee" data-i18n="nav_fee">💵 Fee Collection</button>
-      <button class="tab-btn" data-tab="installments" data-i18n="nav_installments">📆 Installments &amp; Reminders</button>
-      <button class="tab-btn" data-tab="exam" data-i18n="nav_exam">📝 Examinations</button>
-      <button class="tab-btn" data-tab="attendance" data-i18n="nav_attendance">🗓 Attendance</button>
-      <button class="tab-btn" data-tab="payroll" data-i18n="nav_payroll">👔 Staff Payroll</button>
-      <button class="tab-btn" data-tab="promotion" data-i18n="nav_promotion">🎓 Session End / Promotion</button>
-      <button class="tab-btn" data-tab="reports" data-i18n="nav_reports">📈 Reports</button>
-      <button class="tab-btn" data-tab="ledger" data-i18n="nav_ledger">📒 Student Ledger</button>
-      <button class="tab-btn" data-tab="certificates" data-i18n="nav_certificates">🎓 Certificates</button>
-      <button class="tab-btn" data-tab="settings" data-i18n="nav_settings">⚙️ Settings</button>
-      <button class="tab-btn" data-tab="v2hub">🚀 Management Hub</button>
-      <button class="tab-btn" data-tab="devcontrol">🛠 Anjum Webs POS Developer Control</button>
+      <div class="nav-pinned">
+        <button class="tab-btn active" data-tab="dashboard" data-i18n="nav_dashboard">📊 Dashboard</button>
+      </div>
+
+      <div class="nav-group open" data-group="pos-core">
+        <button type="button" class="nav-group-header"><span class="label-text">💳 POS Core</span><span class="chev">▶</span></button>
+        <div class="nav-group-body">
+          <button class="tab-btn" data-tab="fee" data-i18n="nav_fee">💵 Fee Collection</button>
+          <button class="tab-btn" data-tab="installments" data-i18n="nav_installments">📆 Installments &amp; Reminders</button>
+          <button class="tab-btn" data-tab="ledger" data-i18n="nav_ledger">📒 Student Ledger</button>
+          <button class="tab-btn" data-tab="certificates" data-i18n="nav_certificates">🎓 Certificates</button>
+        </div>
+      </div>
+
+      <div class="nav-group" data-group="school-management">
+        <button type="button" class="nav-group-header"><span class="label-text">🏫 School Management</span><span class="chev">▶</span></button>
+        <div class="nav-group-body">
+          <button class="tab-btn" data-tab="reg" data-i18n="nav_reg">🧑‍🎓 Student Registration</button>
+          <button class="tab-btn" data-tab="exam" data-i18n="nav_exam">📝 Examinations</button>
+          <button class="tab-btn" data-tab="attendance" data-i18n="nav_attendance">🗓 Attendance</button>
+          <button class="tab-btn" data-tab="payroll" data-i18n="nav_payroll">👔 Staff Payroll</button>
+          <button class="tab-btn" data-tab="promotion" data-i18n="nav_promotion">🎓 Session End / Promotion</button>
+        </div>
+      </div>
+
+      <div class="nav-group" data-group="reports">
+        <button type="button" class="nav-group-header"><span class="label-text">📈 Reports</span><span class="chev">▶</span></button>
+        <div class="nav-group-body">
+          <button class="tab-btn" data-tab="reports" data-i18n="nav_reports">📈 Reports</button>
+        </div>
+      </div>
+
+      <div class="nav-group" data-group="system-tools">
+        <button type="button" class="nav-group-header"><span class="label-text">🛠 System Tools</span><span class="chev">▶</span></button>
+        <div class="nav-group-body">
+          <button class="tab-btn" data-tab="v2hub">🚀 Management Hub</button>
+          <button class="tab-btn" data-tab="devcontrol">🛠 Anjum Webs POS Developer Control</button>
+        </div>
+      </div>
     </nav>
   </aside>
 
@@ -1767,7 +2020,318 @@ html[dir="rtl"] .combo-list{text-align:right;}
 </section>
 
 <!-- ================= SETTINGS ================= -->
-<section class="panel" id="panel-settings">
+
+<!-- ================= STAFF PASSWORD RESET MODAL ================= -->
+<div class="modal-bg" id="pwResetModalBg">
+  <div class="modal-box" style="max-width:380px;padding:20px 20px 0;">
+    <h2 style="margin-top:0;">Reset Password</h2>
+    <p class="muted" id="pwResetUserLabel"></p>
+    <label>New Password</label>
+    <input type="password" id="pwResetNewPassword" placeholder="New password" autocomplete="new-password">
+    <div class="modal-actions" style="justify-content:flex-end;margin:16px -20px 0;">
+      <button class="btn ghost" onclick="closePwResetModal()">Cancel</button>
+      <button class="btn gold" id="pwResetConfirmBtn">Save New Password</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= USER PERMISSIONS & SETTINGS MODAL =================
+     Reuses the same .modal-bg/.modal-box chrome as the password-reset
+     modal above and writes back through the identical saveKey('erpUsers', …)
+     call every other staff-management action already uses — no new
+     storage key, no other user's record touched. -->
+<div class="modal-bg" id="userSettingsModalBg">
+  <div class="modal-box usm-box">
+    <div class="usm-head">
+      <div>
+        <h3 id="usmUserName">Staff Settings</h3>
+        <p class="usm-sub" id="usmUserSub"></p>
+      </div>
+      <button type="button" class="close-x" onclick="closeUserSettingsModal()" aria-label="Close">✕</button>
+    </div>
+
+    <div class="usm-tabstrip">
+      <button type="button" class="usm-tab-btn active" data-usmtab="module">🧩 Module Access</button>
+      <button type="button" class="usm-tab-btn" data-usmtab="feature">🛡️ Feature Permissions</button>
+      <button type="button" class="usm-tab-btn" data-usmtab="account">👤 Account Parameters</button>
+    </div>
+
+    <div class="usm-body">
+      <!-- Tab 1: Module Access Rights -->
+      <div class="usm-pane active" id="usmPane-module">
+        <p class="usm-hint">Only modules Anjum Webs has licensed for this school can be granted below.</p>
+        <div id="usmModuleGroups"></div>
+      </div>
+
+      <!-- Tab 2: Feature Permissions -->
+      <div class="usm-pane" id="usmPane-feature">
+        <div class="usm-section">
+          <div class="usm-section-head"><span class="ico">💸</span><h4>Discount Control</h4></div>
+          <div class="usm-card">
+            <div class="usm-field">
+              <label for="usm_discountCap">Maximum discount this user may apply (%)</label>
+              <input type="number" id="usm_discountCap" min="0" max="100" step="1" placeholder="0">
+              <p class="muted-sm">Set to 0 to block discounting entirely for this account.</p>
+            </div>
+          </div>
+        </div>
+        <div class="usm-section">
+          <div class="usm-section-head"><span class="ico">🗑️</span><h4>Record Management</h4></div>
+          <div class="usm-card">
+            <label class="checkfee" style="border-bottom:none;">
+              <input type="checkbox" id="usm_canDelete">
+              <span>Allow this user to delete saved records (fee vouchers, students, exam entries, etc.)</span>
+            </label>
+          </div>
+        </div>
+        <div class="usm-section">
+          <div class="usm-section-head"><span class="ico">🖨️</span><h4>Print Controls</h4></div>
+          <div class="usm-card">
+            <label class="checkfee"><input type="checkbox" id="usm_print_a4"><span>A4 document printing</span></label>
+            <label class="checkfee"><input type="checkbox" id="usm_print_a5"><span>A5 document printing</span></label>
+            <label class="checkfee" style="border-bottom:none;"><input type="checkbox" id="usm_print_thermal"><span>Thermal receipt printing</span></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 3: Account Parameters -->
+      <div class="usm-pane" id="usmPane-account">
+        <div class="usm-section">
+          <div class="usm-section-head"><span class="ico">🏷️</span><h4>Role</h4></div>
+          <div class="usm-card">
+            <div class="usm-field">
+              <label for="usm_role">User role</label>
+              <select id="usm_role">
+                <option value="Manager">Manager (Admin Staff)</option>
+                <option value="Accountant">Accountant</option>
+                <option value="Teacher">Teacher</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="usm-section">
+          <div class="usm-section-head"><span class="ico">📅</span><h4>Account Expiry</h4></div>
+          <div class="usm-card">
+            <div class="usm-field">
+              <label for="usm_expiry">Account expiry date (optional)</label>
+              <input type="date" id="usm_expiry">
+              <p class="muted-sm">Leave blank for an account that never expires.</p>
+            </div>
+          </div>
+        </div>
+        <div class="usm-section">
+          <div class="usm-section-head"><span class="ico">🔌</span><h4>Account Status</h4></div>
+          <div class="usm-card">
+            <div class="usm-status-toggle">
+              <button type="button" id="usm_status_active" onclick="setUsmStatus('active')">✅ Active</button>
+              <button type="button" id="usm_status_inactive" onclick="setUsmStatus('inactive')">⛔ Inactive</button>
+            </div>
+            <p class="muted-sm" style="margin-top:8px;">An inactive account is kept on file but flagged so it can be blocked from signing in.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="usm-footer">
+      <button class="btn ghost" onclick="closeUserSettingsModal()">Cancel</button>
+      <button class="btn gold" id="usmSaveBtn" onclick="saveUserSettingsModal()">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= V2 MANAGEMENT HUB ================= -->
+<section class="panel" id="panel-v2hub">
+  <div class="v2-head">
+    <div><h2>🚀 School Management Hub</h2><p class="muted">Advanced administration, student 360°, timetable, accounting, sessions, communications, audit and parent portal.</p></div>
+    <div class="v2-actions"><button class="btn ghost" onclick="v2RefreshAll()">↻ Refresh</button><button class="btn gold" onclick="v2ExportData()">⬇ Export V2 Data</button></div>
+  </div>
+  <div class="v2-kpis" id="v2Kpis"></div>
+  <div class="v2-grid">
+    <div class="card v2-card v2-wide">
+      <div class="v2-card-head"><h2>👨‍🎓 Student 360°</h2><span class="muted">Academic + attendance + fees</span></div>
+      <div class="row"><div><input id="v2StudentSearch" placeholder="Search student name, admission no., father or phone" oninput="v2RenderStudents()"></div><div style="flex:0 0 180px"><select id="v2StudentSelect" onchange="v2ShowStudent()"><option value="">Select student</option></select></div></div>
+      <div id="v2StudentProfile" class="v2-profile"><div class="muted">Select a student to view the complete profile.</div></div>
+    </div>
+    <div class="card v2-card">
+      <div class="v2-card-head"><h2>📅 Timetable</h2><span class="muted">Class & teacher schedule</span></div>
+      <div class="row"><div><select id="v2ttClass"></select></div><div><select id="v2ttDay"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option></select></div></div>
+      <div class="row"><div><input id="v2ttPeriod" placeholder="Period (e.g. 1)"></div><div><input id="v2ttSubject" placeholder="Subject"></div></div>
+      <div class="row"><div><input id="v2ttTeacher" placeholder="Teacher"></div><div><input id="v2ttRoom" placeholder="Room"></div><button class="btn small" onclick="v2AddTimetable()">Add</button></div>
+      <div id="v2TimetableList"></div>
+    </div>
+    <div class="card v2-card">
+      <div class="v2-card-head"><h2>💰 Accounting</h2><span class="muted">Income, expenses & cash closing</span></div>
+      <div class="v2-mini-grid" id="v2FinanceKpis"></div>
+      <div class="row"><div><select id="v2AcctType"><option value="income">Income</option><option value="expense">Expense</option></select></div><div><input id="v2AcctCategory" placeholder="Category"></div></div>
+      <div class="row"><div><input id="v2AcctTitle" placeholder="Description"></div><div><input id="v2AcctAmount" type="number" min="0" placeholder="Amount (Rs.)"></div><button class="btn small" onclick="v2AddAccounting()">Post</button></div>
+      <div id="v2AccountingList"></div>
+    </div>
+    <div class="card v2-card">
+      <div class="v2-card-head"><h2>📣 Communication Center</h2><span class="muted">WhatsApp-ready templates</span></div>
+      <select id="v2MsgType" onchange="v2BuildMessage()"><option value="fee">Fee Reminder</option><option value="absence">Absence Alert</option><option value="result">Result Announcement</option><option value="general">General Notice</option></select>
+      <textarea id="v2MsgText" rows="4" placeholder="Message template"></textarea>
+      <div class="row"><div><select id="v2MsgStudent"></select></div><button class="btn small" onclick="v2OpenWhatsApp()">Open WhatsApp</button></div>
+      <div id="v2MsgHistory"></div>
+    </div>
+    <div class="card v2-card">
+      <div class="v2-card-head"><h2>🎓 Academic Sessions</h2><span class="muted">Session history & rollover</span></div>
+      <div class="row"><div><input id="v2SessionName" placeholder="e.g. 2026-27"></div><button class="btn small" onclick="v2AddSession()">Add Session</button></div>
+      <div id="v2Sessions"></div>
+      <button class="btn ghost small" onclick="v2PromoteSession()">Promote Active Students to Next Class</button>
+    </div>
+    <div class="card v2-card">
+      <div class="v2-card-head"><h2>🔔 Notifications</h2><span class="muted">Management warnings</span></div>
+      <div id="v2Notifications"></div>
+    </div>
+    <div class="card v2-card v2-wide">
+      <div class="v2-card-head"><h2>👨‍👩‍👧 Parent Portal Preview</h2><span class="muted">Mobile-friendly family view</span></div>
+      <div id="v2ParentPortal" class="parent-preview"></div>
+    </div>
+    <div class="card v2-card">
+      <div class="v2-card-head"><h2>💵 Daily Cash Closing</h2><span class="muted">End-of-day control</span></div>
+      <div class="v2-close-grid">
+        <div><label>Cash in hand</label><input id="v2CashActual" type="number" min="0" placeholder="Actual cash"></div>
+        <div><label>Bank/Online</label><input id="v2BankActual" type="number" min="0" placeholder="Bank / online"></div>
+        <div><label>Notes</label><input id="v2CashNotes" placeholder="Optional note"></div>
+      </div>
+      <div class="v2-mini-grid" id="v2CashSummary" style="margin-top:10px"></div>
+      <button class="btn small" onclick="v2CloseDay()">Close Today</button>
+      <div id="v2CashHistory"></div>
+    </div>
+    <div class="card v2-card">
+      <div class="v2-card-head"><h2>📊 Academic & Data Health</h2><span class="muted">Quick integrity checks</span></div>
+      <div id="v2Health"></div>
+      <button class="btn small ghost" onclick="v2RunHealth()">Run Check</button>
+    </div>
+    <div class="card v2-card v2-wide">
+      <div class="v2-card-head"><h2>🛡 Audit Log</h2><span class="muted">Recent V2 administrative actions</span><button class="btn small danger" onclick="v2ClearAudit()">Clear</button></div>
+      <div id="v2Audit"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DEV CONTROL (Master Developer only) ================= -->
+<section class="panel dcc-compact" id="panel-devcontrol">
+
+  <!-- Sticky Top Tab Bar -->
+  <div class="dcc-topbar">
+    <button type="button" class="dcc-drawer-btn" id="dccDrawerBtn" aria-label="Open Command Center menu" title="Menu">☰</button>
+    <div class="dcc-topbar-current" id="dccTopbarCurrent">👥 Tenants &amp; Users</div>
+    <div class="dcc-topbar-actions">
+      <button class="dcc-theme-toggle" id="devThemeToggle" type="button" title="Toggle dark / light theme">🌙</button>
+    </div>
+  </div>
+
+  <div class="dcc-drawer-backdrop" id="dccDrawerBackdrop"></div>
+  <nav class="dcc-drawer" id="dccDrawer">
+    <div class="dcc-drawer-head">
+      <span>Command Center</span>
+      <button type="button" class="dcc-drawer-close" id="dccDrawerCloseBtn" aria-label="Close menu">✕</button>
+    </div>
+    <div class="dcc-topbar-tabs">
+      <button class="dcc-maintab-btn active" data-maintab="tenants">👥 Tenants &amp; Users</button>
+      <button class="dcc-maintab-btn" data-maintab="license">🔑 License Keys</button>
+      <button class="dcc-maintab-btn" data-maintab="requests">⚡ Feature Requests <span class="cnt" id="devReqBadge" style="display:none;">0</span></button>
+      <button class="dcc-maintab-btn" data-maintab="settingsui">⚙️ Settings &amp; UI</button>
+      <button class="dcc-maintab-btn" data-maintab="cloud">☁ Cloud Integration</button>
+      <button class="dcc-maintab-btn" data-maintab="matrix">📊 Feature Matrix</button>
+      <button class="dcc-maintab-btn" data-maintab="global">🌐 Global Config</button>
+    </div>
+  </nav>
+
+  <!-- ===================== TAB: TENANTS & USERS ===================== -->
+  <div class="dcc-maintab-pane active" id="maintab-tenants">
+
+    <!-- Top KPI Metrics Bar -->
+    <div class="dcc-kpi-bar compact" id="devOverviewGrid"></div>
+
+    <div class="dcc-scroll">
+      <!-- Interactive School Cards Grid -->
+      <div class="dcc-section">
+        <div class="dcc-section-head">
+          <div>
+            <h2>🏫 Client Schools</h2>
+            <p class="dcc-muted">Every registered school on this instance, at a glance — refreshes automatically as you provision, license, or delete schools.</p>
+          </div>
+          <button class="btn gold" id="devOpenProvisionBtn" type="button" style="margin-top:0;flex:0 0 auto;">🛠 Provision New Tenant</button>
+        </div>
+        <div class="dcc-school-grid" id="devSchoolCardsGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- The Module Licensing Matrix (per-tenant granular module/feature control)
+       and the Provision New Tenant form now live entirely inside their own
+       modals — see openTenantSettingsModal() / openProvisionTenantModal() —
+       so this tab stays a clean, scannable tenant list. See renderDevControl()
+       for the corresponding cleanup (it no longer depends on a cross-tenant
+       matrix table existing in this tab). -->
+
+
+  <!-- ===================== TAB: LICENSE KEYS ===================== -->
+  <div class="dcc-maintab-pane" id="maintab-license">
+    <div class="dcc-scroll">
+      <div class="dcc-two-col">
+        <div class="card">
+          <h2>🔑 Generate License Key</h2>
+          <p class="muted">Builds a signed, encrypted license key (via <code>ERPLicenseEngine</code>) for a client school's renewal / activation screen. The signing passphrase is set in <b>Global Config</b> and must match what your client installs validate against.</p>
+          <div class="row">
+            <div>
+              <label style="font-size:13px;font-weight:600;color:var(--dcc-text-dim);">Client School</label>
+              <select id="devlk_school"></select>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label style="font-size:13px;font-weight:600;color:var(--dcc-text-dim);">Expiry Date</label>
+              <input type="date" id="devlk_expiry">
+            </div>
+            <div>
+              <label style="font-size:13px;font-weight:600;color:var(--dcc-text-dim);">Device Limit</label>
+              <input type="number" id="devlk_deviceLimit" min="1" value="1">
+            </div>
+          </div>
+          <button class="btn gold" id="devlk_generateBtn" style="margin-top:14px;">🔑 Generate License Key</button>
+          <p class="muted" id="devlk_status" style="margin-top:8px;"></p>
+          <div id="devlk_outputWrap" style="display:none;margin-top:10px;">
+            <label style="font-size:13px;font-weight:600;color:var(--dcc-text-dim);">Generated Key</label>
+            <textarea class="dcc-lk-output" id="devlk_output" readonly></textarea>
+            <button class="btn secondary small" id="devlk_copyBtn" style="margin-top:8px;" type="button">📋 Copy Key</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>📜 Issued Keys (this browser)</h2>
+          <p class="muted">A local convenience log of keys generated from this admin console — not the source of truth for validity, which is decided entirely by the encrypted payload itself.</p>
+          <div class="dcc-scroll short">
+            <table>
+              <thead><tr><th>School</th><th>Key</th><th>Expiry</th><th>Issued</th><th></th></tr></thead>
+              <tbody id="devLicenseKeysTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== TAB: FEATURE REQUESTS ===================== -->
+  <div class="dcc-maintab-pane" id="maintab-requests">
+    <div class="dcc-scroll">
+      <div class="card">
+        <h2>⚡ Pending Upsell / Feature Requests</h2>
+        <p class="muted">Every module upgrade a Super Admin has requested from inside their own ERP, across all client schools — approve or dismiss with one click.</p>
+        <table>
+          <thead><tr><th>School</th><th>Requested Module</th><th>Requested</th><th style="width:170px;"></th></tr></thead>
+          <tbody id="devFeatureRequestsTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== TAB: SETTINGS & UI (relocated from the
+       tenant/school ERP's own removed "Settings" tab — see below) ==== -->
+  <div class="dcc-maintab-pane" id="maintab-settingsui">
+ <div class="dcc-scroll">
   <div class="card dev-settings-banner" id="devSettingsBanner" style="display:none;border-top:4px solid var(--gold);">
     <h2>🛠 Developer Mode — Full Access To <span id="devSettingsSchoolName">—</span></h2>
     <p class="muted">Tier 1 override: you have unrestricted access to every tab, screen, and button for this school — including Backup/Restore and Staff User Management below — regardless of what's licensed for their own Super Admin.</p>
@@ -1881,13 +2445,6 @@ html[dir="rtl"] .combo-list{text-align:right;}
       <div id="settingsFeeList" style="margin-top:14px;"></div>
     </div>
 
-    <div class="card" id="cloudMediaCard">
-      <h2>☁ Cloud Media Archive — Google Drive</h2>
-      <p class="muted">One click connects <b>this school's own</b> Google account — student photographs and scanned documents then archive directly into a dedicated <code>Anjum_Webs_POS_Data</code> folder inside that Drive, instead of piling up as heavy local data. Nothing is shared with Anjum Webs or any other client school; the app can only see the files it creates.</p>
-      <div id="smd_box"></div>
-      <p class="cloud-status" id="smd_status"></p>
-    </div>
-
     <div class="card" id="backupCard">
       <h2>Database Backup &amp; Export</h2>
       <p class="muted">Exports this school's complete dataset — Students, Fees History, Expenses, Staff Payroll, Staff Logins and Settings — as a single, genuinely Excel-compatible <code>.xlsx</code> workbook with one sheet per table. Only this school's data leaves this device; no other client school's records are ever included.</p>
@@ -1935,250 +2492,176 @@ html[dir="rtl"] .combo-list{text-align:right;}
       </table>
     </div>
   </div>
-</section>
-
-<!-- ================= STAFF PASSWORD RESET MODAL ================= -->
-<div class="modal-bg" id="pwResetModalBg">
-  <div class="modal-box" style="max-width:380px;padding:20px 20px 0;">
-    <h2 style="margin-top:0;">Reset Password</h2>
-    <p class="muted" id="pwResetUserLabel"></p>
-    <label>New Password</label>
-    <input type="password" id="pwResetNewPassword" placeholder="New password" autocomplete="new-password">
-    <div class="modal-actions" style="justify-content:flex-end;margin:16px -20px 0;">
-      <button class="btn ghost" onclick="closePwResetModal()">Cancel</button>
-      <button class="btn gold" id="pwResetConfirmBtn">Save New Password</button>
-    </div>
-  </div>
+ </div>
 </div>
 
-<!-- ================= V2 MANAGEMENT HUB ================= -->
-<section class="panel" id="panel-v2hub">
-  <div class="v2-head">
-    <div><h2>🚀 School Management Hub</h2><p class="muted">Advanced administration, student 360°, timetable, accounting, sessions, communications, audit and parent portal.</p></div>
-    <div class="v2-actions"><button class="btn ghost" onclick="v2RefreshAll()">↻ Refresh</button><button class="btn gold" onclick="v2ExportData()">⬇ Export V2 Data</button></div>
-  </div>
-  <div class="v2-kpis" id="v2Kpis"></div>
-  <div class="v2-grid">
-    <div class="card v2-card v2-wide">
-      <div class="v2-card-head"><h2>👨‍🎓 Student 360°</h2><span class="muted">Academic + attendance + fees</span></div>
-      <div class="row"><div><input id="v2StudentSearch" placeholder="Search student name, admission no., father or phone" oninput="v2RenderStudents()"></div><div style="flex:0 0 180px"><select id="v2StudentSelect" onchange="v2ShowStudent()"><option value="">Select student</option></select></div></div>
-      <div id="v2StudentProfile" class="v2-profile"><div class="muted">Select a student to view the complete profile.</div></div>
-    </div>
-    <div class="card v2-card">
-      <div class="v2-card-head"><h2>📅 Timetable</h2><span class="muted">Class & teacher schedule</span></div>
-      <div class="row"><div><select id="v2ttClass"></select></div><div><select id="v2ttDay"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option></select></div></div>
-      <div class="row"><div><input id="v2ttPeriod" placeholder="Period (e.g. 1)"></div><div><input id="v2ttSubject" placeholder="Subject"></div></div>
-      <div class="row"><div><input id="v2ttTeacher" placeholder="Teacher"></div><div><input id="v2ttRoom" placeholder="Room"></div><button class="btn small" onclick="v2AddTimetable()">Add</button></div>
-      <div id="v2TimetableList"></div>
-    </div>
-    <div class="card v2-card">
-      <div class="v2-card-head"><h2>💰 Accounting</h2><span class="muted">Income, expenses & cash closing</span></div>
-      <div class="v2-mini-grid" id="v2FinanceKpis"></div>
-      <div class="row"><div><select id="v2AcctType"><option value="income">Income</option><option value="expense">Expense</option></select></div><div><input id="v2AcctCategory" placeholder="Category"></div></div>
-      <div class="row"><div><input id="v2AcctTitle" placeholder="Description"></div><div><input id="v2AcctAmount" type="number" min="0" placeholder="Amount (Rs.)"></div><button class="btn small" onclick="v2AddAccounting()">Post</button></div>
-      <div id="v2AccountingList"></div>
-    </div>
-    <div class="card v2-card">
-      <div class="v2-card-head"><h2>📣 Communication Center</h2><span class="muted">WhatsApp-ready templates</span></div>
-      <select id="v2MsgType" onchange="v2BuildMessage()"><option value="fee">Fee Reminder</option><option value="absence">Absence Alert</option><option value="result">Result Announcement</option><option value="general">General Notice</option></select>
-      <textarea id="v2MsgText" rows="4" placeholder="Message template"></textarea>
-      <div class="row"><div><select id="v2MsgStudent"></select></div><button class="btn small" onclick="v2OpenWhatsApp()">Open WhatsApp</button></div>
-      <div id="v2MsgHistory"></div>
-    </div>
-    <div class="card v2-card">
-      <div class="v2-card-head"><h2>🎓 Academic Sessions</h2><span class="muted">Session history & rollover</span></div>
-      <div class="row"><div><input id="v2SessionName" placeholder="e.g. 2026-27"></div><button class="btn small" onclick="v2AddSession()">Add Session</button></div>
-      <div id="v2Sessions"></div>
-      <button class="btn ghost small" onclick="v2PromoteSession()">Promote Active Students to Next Class</button>
-    </div>
-    <div class="card v2-card">
-      <div class="v2-card-head"><h2>🔔 Notifications</h2><span class="muted">Management warnings</span></div>
-      <div id="v2Notifications"></div>
-    </div>
-    <div class="card v2-card v2-wide">
-      <div class="v2-card-head"><h2>👨‍👩‍👧 Parent Portal Preview</h2><span class="muted">Mobile-friendly family view</span></div>
-      <div id="v2ParentPortal" class="parent-preview"></div>
-    </div>
-    <div class="card v2-card">
-      <div class="v2-card-head"><h2>💵 Daily Cash Closing</h2><span class="muted">End-of-day control</span></div>
-      <div class="v2-close-grid">
-        <div><label>Cash in hand</label><input id="v2CashActual" type="number" min="0" placeholder="Actual cash"></div>
-        <div><label>Bank/Online</label><input id="v2BankActual" type="number" min="0" placeholder="Bank / online"></div>
-        <div><label>Notes</label><input id="v2CashNotes" placeholder="Optional note"></div>
-      </div>
-      <div class="v2-mini-grid" id="v2CashSummary" style="margin-top:10px"></div>
-      <button class="btn small" onclick="v2CloseDay()">Close Today</button>
-      <div id="v2CashHistory"></div>
-    </div>
-    <div class="card v2-card">
-      <div class="v2-card-head"><h2>📊 Academic & Data Health</h2><span class="muted">Quick integrity checks</span></div>
-      <div id="v2Health"></div>
-      <button class="btn small ghost" onclick="v2RunHealth()">Run Check</button>
-    </div>
-    <div class="card v2-card v2-wide">
-      <div class="v2-card-head"><h2>🛡 Audit Log</h2><span class="muted">Recent V2 administrative actions</span><button class="btn small danger" onclick="v2ClearAudit()">Clear</button></div>
-      <div id="v2Audit"></div>
-    </div>
-  </div>
-</section>
+  <!-- ===================== TAB: CLOUD INTEGRATION ===================== -->
+  <div class="dcc-maintab-pane" id="maintab-cloud">
+    <div class="dcc-scroll">
+      <div class="dcc-two-col">
+        <!-- Master Cloud Credentials -->
+        <div class="card" id="cloudConfigCard">
+          <h2>☁ Cloud Console Integration</h2>
+          <p class="muted">Connect this deployment to your own Firebase project and/or Google Drive for backups. Credentials are stored only in this browser's Local Storage — they are never sent anywhere except directly to Firebase/Google when a sync is enabled and triggered.</p>
 
-<!-- ================= DEV CONTROL (Master Developer only) ================= -->
-<section class="panel" id="panel-devcontrol">
-
-  <!-- Top KPI Metrics Bar -->
-  <div class="dcc-kpi-bar" id="devOverviewGrid"></div>
-
-  <!-- Interactive School Cards Grid -->
-  <div class="dcc-section">
-    <div class="dcc-section-head">
-      <div>
-        <h2>🏫 Client Schools</h2>
-        <p class="dcc-muted">Every registered school on this instance, at a glance — refreshes automatically as you provision, license, or delete schools.</p>
-      </div>
-    </div>
-    <div class="dcc-school-grid" id="devSchoolCardsGrid"></div>
-  </div>
-
-  <!-- Tabbed Developer Settings Console -->
-  <div class="dcc-section">
-    <div class="dcc-console">
-      <div class="dcc-console-tabs">
-        <button class="dcc-tab-btn active" data-devtab="cloud">☁ Cloud Credentials</button>
-        <button class="dcc-tab-btn" data-devtab="flags">🚩 Global Feature Flags</button>
-        <button class="dcc-tab-btn" data-devtab="schoolmgmt">🏫 School Management</button>
-        <button class="dcc-tab-btn" data-devtab="auth">🔒 Master Auth / Security</button>
-        <button class="dcc-tab-btn" data-devtab="appearance">🎨 Appearance</button>
-      </div>
-      <div class="dcc-console-body">
-
-        <!-- Cloud Credentials -->
-        <div class="dcc-tab-pane active" id="devtab-cloud">
-          <div class="card" id="cloudConfigCard">
-            <h2>☁ Cloud Console Integration</h2>
-            <p class="muted">Connect this deployment to your own Firebase project and/or Google Drive for backups. Credentials are stored only in this browser's Local Storage — they are never sent anywhere except directly to Firebase/Google when a sync is enabled and triggered.</p>
-
-            <div class="toggle-row">
-              <div class="toggle-label"><b>Firebase Sync</b><span>Mirrors every local save to your Firebase project in the background.</span></div>
-              <label class="toggle-switch"><input type="checkbox" id="cc_fbEnabled"><span class="toggle-slider"></span></label>
-            </div>
-            <div class="cloud-field-group">
-              <h3>Firebase Config</h3>
-              <div class="row">
-                <div><input type="text" id="cc_fbApiKey" placeholder="Firebase API Key"></div>
-                <div><input type="text" id="cc_fbAuthDomain" placeholder="Auth Domain (e.g. project.firebaseapp.com)"></div>
-              </div>
-              <div class="row">
-                <div><input type="text" id="cc_fbProjectId" placeholder="Project ID"></div>
-                <div><input type="text" id="cc_fbStorageBucket" placeholder="Storage Bucket"></div>
-              </div>
-              <div class="row">
-                <div><input type="text" id="cc_fbMessagingSenderId" placeholder="Messaging Sender ID"></div>
-                <div><input type="text" id="cc_fbAppId" placeholder="App ID"></div>
-              </div>
-            </div>
-
-            <div class="toggle-row" style="margin-top:18px;">
-              <div class="toggle-label"><b>Google Drive Backup</b><span>Lets you push a full data backup to Google Drive on demand.</span></div>
-              <label class="toggle-switch"><input type="checkbox" id="cc_driveEnabled"><span class="toggle-slider"></span></label>
-            </div>
-            <div class="cloud-field-group">
-              <h3>Google Drive Config <span class="muted">(Master Developer Client ID)</span></h3>
-              <p class="muted" style="margin:0 0 8px;">This single Client ID is shared by every client school on this instance — each school still authorizes their own Google account individually via Google's own consent screen. Powers both the on-demand backup below and each school's one-click "Connect Google Drive" media archiving in their own Settings tab.</p>
-              <div class="row">
-                <div><input type="text" id="cc_driveApiKey" placeholder="Google Drive API Key"></div>
-                <div><input type="text" id="cc_driveClientId" placeholder="Master Developer OAuth Client ID"></div>
-              </div>
-            </div>
-
-            <div class="row" style="margin-top:16px;">
-              <button class="btn gold" id="cc_saveBtn">Save Cloud Settings</button>
-              <button class="btn secondary" id="cc_driveBackupBtn">🔄 Connect &amp; Backup Now to Drive</button>
-            </div>
-            <p class="muted" id="cc_status"></p>
-            <p class="cloud-status" id="cc_driveStatus"></p>
-            <p class="muted" style="margin-top:6px;font-size:11.5px;">Note: Google requires an explicit user click to authorize Drive access — there's no way to silently sync to Drive in the background, so backups happen when you press the button above (enable the toggle first). Firebase Sync, once enabled, runs automatically after every save.</p>
+          <div class="toggle-row">
+            <div class="toggle-label"><b>Firebase Sync</b><span>Mirrors every local save to your Firebase project in the background.</span></div>
+            <label class="toggle-switch"><input type="checkbox" id="cc_fbEnabled"><span class="toggle-slider"></span></label>
           </div>
+          <div class="cloud-field-group">
+            <h3>Firebase Config</h3>
+            <div class="row">
+              <div><input type="text" id="cc_fbApiKey" placeholder="Firebase API Key"></div>
+              <div><input type="text" id="cc_fbAuthDomain" placeholder="Auth Domain (e.g. project.firebaseapp.com)"></div>
+            </div>
+            <div class="row">
+              <div><input type="text" id="cc_fbProjectId" placeholder="Project ID"></div>
+              <div><input type="text" id="cc_fbStorageBucket" placeholder="Storage Bucket"></div>
+            </div>
+            <div class="row">
+              <div><input type="text" id="cc_fbMessagingSenderId" placeholder="Messaging Sender ID"></div>
+              <div><input type="text" id="cc_fbAppId" placeholder="App ID"></div>
+            </div>
+          </div>
+
+          <div class="toggle-row" style="margin-top:18px;">
+            <div class="toggle-label"><b>Google Drive Backup</b><span>Lets you push a full data backup to Google Drive on demand.</span></div>
+            <label class="toggle-switch"><input type="checkbox" id="cc_driveEnabled"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="cloud-field-group">
+            <h3>Google Drive Config <span class="muted">(Master Developer Client ID)</span></h3>
+            <p class="muted" style="margin:0 0 8px;">This single Client ID is shared by every client school on this instance — each school still authorizes their own Google account individually via Google's own consent screen. Powers both the on-demand backup below and each school's one-click "Connect Google Drive" media archiving.</p>
+            <div class="row">
+              <div><input type="text" id="cc_driveApiKey" placeholder="Google Drive API Key"></div>
+              <div><input type="text" id="cc_driveClientId" placeholder="Master Developer OAuth Client ID"></div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:16px;">
+            <button class="btn gold" id="cc_saveBtn">Save Cloud Settings</button>
+            <button class="btn secondary" id="cc_driveBackupBtn">🔄 Connect &amp; Backup Now to Drive</button>
+          </div>
+          <p class="muted" id="cc_status"></p>
+          <p class="cloud-status" id="cc_driveStatus"></p>
+          <p class="muted" style="margin-top:6px;font-size:11.5px;">Note: Google requires an explicit user click to authorize Drive access — there's no way to silently sync to Drive in the background, so backups happen when you press the button above (enable the toggle first). Firebase Sync, once enabled, runs automatically after every save.</p>
         </div>
 
+        <!-- Per-school Drive connection (only meaningful while a school
+             is loaded via Inspect ERP / Settings & UI school context) -->
+        <div class="card" id="cloudMediaCard">
+          <h2>☁ Cloud Media Archive — Google Drive</h2>
+          <p class="muted">One click connects <b>this school's own</b> Google account — student photographs and scanned documents then archive directly into a dedicated <code>Anjum_Webs_POS_Data</code> folder inside that Drive, instead of piling up as heavy local data. Nothing is shared with Anjum Webs or any other client school; the app can only see the files it creates.</p>
+          <div id="smd_box"></div>
+          <p class="cloud-status" id="smd_status"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== TAB: FEATURE MATRIX ===================== -->
+  <div class="dcc-maintab-pane" id="maintab-matrix">
+    <div class="dcc-scroll">
+      <div class="dcc-two-col">
         <!-- Global Feature Flags -->
-        <div class="dcc-tab-pane" id="devtab-flags">
-          <div class="card">
-            <h2>🚩 Global Feature Flags</h2>
-            <p class="muted">Sets the default module license state applied to every <b>newly provisioned</b> school. Existing schools keep whatever they already have — adjust those individually under School Management or a card's Quick Settings.</p>
-            <div id="devGlobalFlagsBox"></div>
-          </div>
+        <div class="card">
+          <h2>🚩 Global Feature Flags</h2>
+          <p class="muted">Sets the default module license state applied to every <b>newly provisioned</b> school. Existing schools keep whatever they already have — adjust those individually under Tenants &amp; Users.</p>
+          <div id="devGlobalFlagsBox"></div>
         </div>
 
-        <!-- School Management -->
-        <div class="dcc-tab-pane" id="devtab-schoolmgmt">
-          <div class="card">
-            <h2>🛠 Client / School Registry</h2>
-            <p class="muted">Provision a new client school and hand its Super Admin credentials to the school owner. This account is completely separate from your own developer login.</p>
-            <div class="row">
-              <div><input type="text" id="dev_schoolName" placeholder="School / Academy name"></div>
-            </div>
-            <div class="row">
-              <div><input type="text" id="dev_ownerUsername" placeholder="Super Admin username"></div>
-              <div><input type="password" id="dev_ownerPassword" placeholder="Secure password"></div>
-            </div>
-            <div class="row">
-              <div><input type="email" id="dev_ownerEmail" placeholder="Owner's Google account email (for Sign in with Google) — optional"></div>
-            </div>
-            <div class="row">
-              <div>
-                <label style="font-size:13px;font-weight:600;color:var(--dcc-text-dim);">Feature Package</label>
-                <select id="dev_schoolPackage">
-                  <option value="Basic">Basic</option>
-                  <option value="Standard">Standard</option>
-                  <option value="Premium">Premium</option>
-                  <option value="Custom">Custom</option>
-                </select>
-              </div>
-            </div>
-            <p class="muted" style="margin:2px 0 6px;font-size:12px;">Basic / Standard / Premium auto-fill the checkboxes below. Custom leaves them for you to set individually.</p>
-            <div id="dev_newSchoolModuleBox" style="margin:0 0 4px;"></div>
-            <button class="btn gold" id="devCreateSchoolBtn" style="margin-top:14px;">+ Provision New School</button>
-          </div>
-
-          <div class="card" style="margin-top:18px;">
-            <h2>Module Licensing Matrix</h2>
-            <p class="muted">Every module the Super Admin can ever see is toggled here — this is the master ceiling of their access, right down to Dashboard and Settings. Changes save and apply instantly — locked modules disappear from that school's sidebar immediately.</p>
-            <table>
-              <thead><tr><th>School</th><th>Licensed Modules</th><th>Package / Add-ons</th><th></th></tr></thead>
-              <tbody id="devSchoolsTable"></tbody>
-            </table>
-          </div>
+        <!-- Package Tier → Module allocation -->
+        <div class="card">
+          <h2>📦 Package Tier Allocation</h2>
+          <p class="muted">Define exactly which add-on modules each pricing tier includes. Selecting a tier while provisioning a new school auto-fills these module checkboxes — <b>Custom</b> always leaves the checkboxes for manual control.</p>
+          <div class="dcc-tier-tabs" id="matrixTierTabs"></div>
+          <div id="matrixTierBox" style="margin-top:12px;"></div>
+          <button class="btn gold" id="matrixTierSaveBtn" style="margin-top:14px;">Save Tier Modules</button>
+          <p class="muted" id="matrixTierStatus" style="margin-top:8px;"></p>
         </div>
-
-        <!-- Master Auth / Security -->
-        <div class="dcc-tab-pane" id="devtab-auth">
-          <div class="card" id="devMasterPwCard">
-            <h2>🔒 Update Master Developer Password</h2>
-            <p class="muted">Sets a new login password for the <b id="devMasterUsernameLabel">Master Developer</b> account. Stored as a SHA-256 hash — once saved, the hash always takes priority over the built-in plain-text fallback.</p>
-            <div class="row">
-              <div><input type="password" id="dev_newMasterPassword" placeholder="New master password" autocomplete="new-password"></div>
-              <div><input type="password" id="dev_newMasterPasswordConfirm" placeholder="Confirm new password" autocomplete="new-password"></div>
-            </div>
-            <button class="btn gold" id="devUpdateMasterPwBtn" style="margin-top:14px;">Save New Master Password</button>
-            <p class="muted" id="devMasterPwStatus" style="margin-top:10px;"></p>
-          </div>
-        </div>
-
-        <!-- Appearance -->
-        <div class="dcc-tab-pane" id="devtab-appearance">
-          <div class="card">
-            <h2>🎨 Dashboard Appearance</h2>
-            <p class="muted">Set exact hex colours for the Developer Console — the light default is used unless you override a value below. Changes apply instantly and are saved in this browser.</p>
-            <div class="hex-customizer" id="devHexCustomizer"></div>
-            <div class="hex-customizer-actions">
-              <button class="btn ghost small" id="devHexResetBtn" type="button">Reset to Default Light Theme</button>
-            </div>
-          </div>
-        </div>
-
       </div>
+
+      <p class="muted" style="margin-top:4px;">Per-school module licensing (the ceiling for each individual client) is set under <b>Tenants &amp; Users → Module Licensing Matrix</b>.</p>
     </div>
   </div>
+
+  <!-- ===================== TAB: GLOBAL CONFIG ===================== -->
+  <div class="dcc-maintab-pane" id="maintab-global">
+    <div class="dcc-scroll">
+
+      <div class="dcc-two-col">
+        <!-- System Maintenance / Support / Announcements -->
+        <div class="card">
+          <h2>📢 System Maintenance &amp; Announcements</h2>
+          <p class="muted">Broadcasts instantly to every client school (via the Global Broadcast &amp; Announcement Engine) and stores your support contact for reference.</p>
+
+          <div class="toggle-row">
+            <div class="toggle-label"><b>Maintenance Mode</b><span>Shows a non-blocking maintenance notice banner to every client school.</span></div>
+            <label class="toggle-switch"><input type="checkbox" id="devMaintenanceToggle"><span class="toggle-slider"></span></label>
+          </div>
+
+          <div class="row" style="margin-top:10px;">
+            <div>
+              <label style="font-size:13px;font-weight:600;color:var(--dcc-text-dim);">WhatsApp Support Number</label>
+              <input type="text" id="devSupportWhatsapp" placeholder="+92 3xx xxxxxxx">
+            </div>
+          </div>
+          <button class="btn gold" id="devSaveGlobalConfigBtn" style="margin-top:12px;">Save Support &amp; Maintenance Settings</button>
+          <p class="muted" id="devGlobalConfigStatus" style="margin-top:8px;"></p>
+
+          <hr style="margin:18px 0;border:none;border-top:1px dashed var(--dcc-border);">
+
+          <label style="font-size:13px;font-weight:600;color:var(--dcc-text-dim);">Global Announcement</label>
+          <div class="row" style="margin-top:6px;">
+            <div>
+              <select id="devAnnounceType">
+                <option value="system_banner">System Notice</option>
+                <option value="maintenance_warning">Maintenance Notice</option>
+                <option value="emergency_lock">Emergency (blocking)</option>
+              </select>
+            </div>
+          </div>
+          <textarea id="devAnnounceMsg" rows="3" placeholder="Message shown to every client school…" style="margin-top:8px;"></textarea>
+          <button class="btn secondary" id="devAnnounceSendBtn" style="margin-top:10px;">📣 Broadcast to All Schools</button>
+          <p class="muted" id="devAnnounceStatus" style="margin-top:8px;"></p>
+        </div>
+
+        <!-- License Signing Passphrase -->
+        <div class="card">
+          <h2>🔏 License Signing Passphrase</h2>
+          <p class="muted">Used by the License Keys tab to sign/encrypt every key it issues. Keep this identical across time — changing it invalidates the ability to re-derive previously issued keys' payload (the keys themselves keep working, this only affects future generation).</p>
+          <div class="row">
+            <div><input type="password" id="devLicenseSecretInput" placeholder="License signing passphrase" autocomplete="off"></div>
+          </div>
+          <button class="btn secondary" id="devLicenseSecretSaveBtn" style="margin-top:10px;">Save Passphrase</button>
+          <p class="muted" id="devLicenseSecretStatus" style="margin-top:8px;"></p>
+        </div>
+      </div>
+
+      <!-- Master Auth / Security -->
+      <div class="card" id="devMasterPwCard" style="margin-top:16px;">
+        <h2>🔒 Update Master Developer Password</h2>
+        <p class="muted">Sets a new login password for the <b id="devMasterUsernameLabel">Master Developer</b> account. Stored as a SHA-256 hash — once saved, the hash always takes priority over the built-in plain-text fallback.</p>
+        <div class="row">
+          <div><input type="password" id="dev_newMasterPassword" placeholder="New master password" autocomplete="new-password"></div>
+          <div><input type="password" id="dev_newMasterPasswordConfirm" placeholder="Confirm new password" autocomplete="new-password"></div>
+        </div>
+        <button class="btn gold" id="devUpdateMasterPwBtn" style="margin-top:14px;">Save New Master Password</button>
+        <p class="muted" id="devMasterPwStatus" style="margin-top:10px;"></p>
+      </div>
+
+      <!-- Appearance -->
+      <div class="card" style="margin-top:16px;">
+        <h2>🎨 Dashboard Appearance</h2>
+        <p class="muted">Set exact hex colours for the Developer Console — the light default is used unless you override a value below. Changes apply instantly and are saved in this browser.</p>
+        <div class="hex-customizer" id="devHexCustomizer"></div>
+        <div class="hex-customizer-actions">
+          <button class="btn ghost small" id="devHexResetBtn" type="button">Reset to Default Light Theme</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
 </section>
 
 </main>
@@ -2190,19 +2673,23 @@ html[dir="rtl"] .combo-list{text-align:right;}
   <div class="modal-box">
     <div id="printArea" data-fmt="a4"></div>
     <div class="modal-actions" style="flex-direction:column;align-items:stretch;gap:10px;">
-      <div id="printSizeRow" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <label style="margin:0;font-size:12.5px;color:var(--muted);white-space:nowrap;">🖨 Print size</label>
-        <select id="printFormatSelect" style="width:auto;flex:1;min-width:150px;margin:0;" onchange="applyPrintFormat(this.value)">
-          <option value="a4">A4 (standard PDF/office)</option>
-          <option value="a5">A5 (half-page / compact)</option>
-          <option value="thermal">Thermal Roll (80mm)</option>
-        </select>
+      <div id="modalPrintControls">
+        <div id="printSizeRow" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <label style="margin:0;font-size:12.5px;color:var(--muted);white-space:nowrap;">🖨 Print size</label>
+          <select id="printFormatSelect" style="width:auto;flex:1;min-width:150px;margin:0;" onchange="applyPrintFormat(this.value)">
+            <option value="a4">A4 (standard PDF/office)</option>
+            <option value="a5">A5 (half-page / compact)</option>
+            <option value="thermal">Thermal Roll (80mm)</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+          <button class="btn secondary" onclick="window.print()">🖨 Print</button>
+          <button class="btn gold" id="downloadImgBtn">⬇ Download as Image</button>
+        </div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn secondary" onclick="window.print()">🖨 Print</button>
-        <button class="btn gold" id="downloadImgBtn">⬇ Download as Image</button>
         <button class="btn whatsapp" id="waSendBtn" style="display:none;">💬 Send on WhatsApp</button>
-        <button class="btn ghost" onclick="closeModal()">Close</button>
+        <button class="btn ghost" onclick="closeModal()" style="margin-left:auto;">Close</button>
       </div>
     </div>
   </div>
@@ -2532,6 +3019,22 @@ function computeAllowedTabs(user, school){
   return perms.filter(t => licensedAssignableTabs(school).includes(t));
 }
 
+/* Applies (or clears) this school's per-tenant advanced hex colour
+   overrides — set via the Developer Command Center's Settings &
+   Configuration → Theme & UI tab. Always clears every known hex field
+   first so switching between schools (e.g. via Inspect ERP) never
+   leaks one tenant's custom colours into another's screen. Safe to
+   call even before SCHOOL_HEX_FIELDS' declaring statement has run at
+   parse time, since this function only executes later, at runtime. */
+function applyTenantCustomColors(customColors){
+  if(typeof SCHOOL_HEX_FIELDS === 'undefined') return;
+  SCHOOL_HEX_FIELDS.forEach(f => document.documentElement.style.removeProperty(f.varName));
+  const custom = customColors || {};
+  Object.keys(custom).forEach(varName => {
+    if(custom[varName]) document.documentElement.style.setProperty(varName, custom[varName]);
+  });
+}
+
 function defaultSettings(){
   return {
     classes: ["Play Group","Nursery","KG","Class 1","Class 2","Class 3","Class 4","Class 5",
@@ -2556,6 +3059,10 @@ function defaultSettings(){
     },
     classSections: {},
     theme: "navy",
+    // Per-tenant advanced hex colour overrides, set from the Developer
+    // Command Center's "Settings & Configuration" → Theme & UI tab.
+    // Keyed by the same CSS variable names as SCHOOL_HEX_FIELDS.
+    customColors: {},
     // Phase 5A: per-school Google Drive media-archive connection state
     drive: { connected:false, folderId:'', photosFolderId:'', documentsFolderId:'', connectedAt:'' },
     // Bulk Fee Voucher Generation Module — feature toggle (System Settings).
@@ -2590,7 +3097,9 @@ async function loadAll(){
   // Back-fill for schools saved before this toggle existed — never
   // false-by-omission, mirrors the ensureSchoolFeatures() pattern above.
   if(typeof settings.enableBulkVoucherGeneration !== 'boolean') settings.enableBulkVoucherGeneration = true;
+  if(!settings.customColors) settings.customColors = {};
   document.documentElement.setAttribute('data-theme', settings.theme);
+  applyTenantCustomColors(settings.customColors);
   applyBranding();
   renderAll();
   startLiveSync(currentSchoolId);
@@ -3045,7 +3554,7 @@ const LIVE_SYNC_RENDER = {
   payrollRuns: ()=>{ renderPayrollProcessing(); },
   staffAttendance: ()=>{ renderStaffDirectory(); },
   attendance: ()=>{ /* attendance screen needs a class+date selection to redraw; picked up next time the user opens it */ },
-  settings: ()=>{ settings = settings || defaultSettings(); document.documentElement.setAttribute('data-theme', settings.theme||'navy'); applyBranding(); refreshClassDropdowns(); renderSettingsPanel(); }
+  settings: ()=>{ settings = settings || defaultSettings(); document.documentElement.setAttribute('data-theme', settings.theme||'navy'); applyTenantCustomColors(settings.customColors); applyBranding(); refreshClassDropdowns(); renderSettingsPanel(); }
 };
 let liveSyncUnsubs = {};      // key -> unsubscribe function
 let liveSyncLastApplied = {}; // key -> last-applied updatedAt (ISO string), guards stale/duplicate/self-echo
@@ -3858,11 +4367,12 @@ function renderManageUsers(){
     <tr>
       <td>${escapeHtml(u.name)}</td>
       <td>${u.username}${u.email ? `<br><span class="muted" style="font-size:11px;">🔗 ${escapeHtml(u.email)}</span>` : ''}</td>
-      <td>${u.role}</td>
+      <td>${u.role}${(u.settings && u.settings.status==='inactive') ? ' <span class="dcc-status-badge" style="background:#fbe4e1;color:#b5443a;">Inactive</span>' : ''}</td>
       <td>${(u.permissions||[]).map(t=>TAB_LABELS[t]||t).join(', ') || '<span class="muted">none</span>'}</td>
       <td style="white-space:nowrap;">
         <button class="btn small ghost" onclick="editUser('${u.id}')">Edit Access</button>
         <button class="btn small ghost" onclick="openPwResetModal('${u.id}')">Reset Password</button>
+        <button class="btn small ghost" onclick="openUserSettingsModal('${u.id}')" title="Permissions &amp; account settings">Settings ⚙️</button>
         <button class="btn small danger" onclick="removeUser('${u.id}')">Remove</button>
       </td>
     </tr>`).join('') || `<tr><td colspan="5" class="muted">No staff accounts yet — use the form above to provision one.</td></tr>`;
@@ -3934,6 +4444,169 @@ async function removeUser(id){
 }
 
 /* ============================================================
+   USER PERMISSIONS & SETTINGS MODAL
+   A categorized, tabbed view on top of the same appUsers array /
+   'erpUsers' storage key used by the provisioning form above. It
+   reads and writes ONE user object at a time (by id) and merges its
+   changes in-place, so no other staff record and no other localStorage
+   key is ever touched. Module Access reuses the existing u.permissions
+   array; Feature Permissions / Account Parameters live in a new
+   u.settings sub-object, defaulted for accounts created before this
+   panel existed so nothing breaks on older data. ------------------- */
+
+// Grouped the same way as the sidebar's accordion sections, so staff
+// see a familiar, professionally organized checklist instead of one
+// long flat list.
+const USM_MODULE_GROUPS = [
+  { key:'pos-core',      label:'💳 POS Core',          tabs:['fee','installments','ledger','certificates'] },
+  { key:'school-mgmt',   label:'🏫 School Management', tabs:['reg','exam','attendance','payroll','promotion'] },
+  { key:'reports',       label:'📈 Reports',            tabs:['reports'] }
+];
+
+function usmDefaultSettings(){
+  return {
+    discountCap: 0,
+    canDeleteRecords: false,
+    printAccess: { a4:true, a5:true, thermal:true },
+    accountExpiry: '',
+    status: 'active'
+  };
+}
+// Merges saved settings over the defaults so accounts that predate
+// this feature (or are missing a newly-added field) still render
+// sane values instead of blanks/undefined.
+function usmResolveSettings(u){
+  const d = usmDefaultSettings();
+  const s = (u && u.settings) || {};
+  return {
+    discountCap: (typeof s.discountCap==='number') ? s.discountCap : d.discountCap,
+    canDeleteRecords: !!s.canDeleteRecords,
+    printAccess: {
+      a4: s.printAccess ? !!s.printAccess.a4 : d.printAccess.a4,
+      a5: s.printAccess ? !!s.printAccess.a5 : d.printAccess.a5,
+      thermal: s.printAccess ? !!s.printAccess.thermal : d.printAccess.thermal
+    },
+    accountExpiry: s.accountExpiry || d.accountExpiry,
+    status: (s.status==='inactive') ? 'inactive' : 'active'
+  };
+}
+
+let usmTargetId = null;
+let usmPendingStatus = 'active';
+
+function renderUsmModuleGroups(selectedTabs){
+  const box = document.getElementById('usmModuleGroups');
+  if(!box) return;
+  const licensed = new Set(licensedAssignableTabs(currentSchool));
+  const sel = new Set(selectedTabs || []);
+  const html = USM_MODULE_GROUPS.map(group=>{
+    const rows = group.tabs.filter(t=>licensed.has(t)).map(t=>`
+      <label class="checkfee" style="border-bottom:none;">
+        <input type="checkbox" class="usm-module-perm" value="${t}" ${sel.has(t) ? 'checked' : ''}>
+        <span>${TAB_LABELS[t] || t}</span>
+      </label>`).join('');
+    if(!rows) return '';
+    return `
+      <div class="usm-section">
+        <div class="usm-section-head"><h4>${group.label}</h4></div>
+        <div class="usm-card">${rows}</div>
+      </div>`;
+  }).join('');
+  box.innerHTML = html || `<p class="usm-empty">No premium modules are licensed for this school yet — ask Anjum Webs to enable some in the Developer Control panel before assigning staff access.</p>`;
+}
+
+function setUsmStatus(status){
+  usmPendingStatus = status==='inactive' ? 'inactive' : 'active';
+  document.getElementById('usm_status_active').classList.toggle('on-active', usmPendingStatus==='active');
+  document.getElementById('usm_status_inactive').classList.toggle('on-inactive', usmPendingStatus==='inactive');
+}
+
+function openUserSettingsModal(id){
+  const u = appUsers.find(u=>u.id===id);
+  if(!u) return;
+  usmTargetId = id;
+  const s = usmResolveSettings(u);
+
+  document.getElementById('usmUserName').textContent = `Settings — ${u.name}`;
+  document.getElementById('usmUserSub').textContent = `${u.username}${u.role ? ' · ' + u.role : ''}`;
+
+  // Tab 1: Module Access
+  renderUsmModuleGroups(u.permissions || []);
+
+  // Tab 2: Feature Permissions
+  document.getElementById('usm_discountCap').value = s.discountCap;
+  document.getElementById('usm_canDelete').checked = s.canDeleteRecords;
+  document.getElementById('usm_print_a4').checked = s.printAccess.a4;
+  document.getElementById('usm_print_a5').checked = s.printAccess.a5;
+  document.getElementById('usm_print_thermal').checked = s.printAccess.thermal;
+
+  // Tab 3: Account Parameters
+  document.getElementById('usm_role').value = u.role || 'Manager';
+  document.getElementById('usm_expiry').value = s.accountExpiry || '';
+  setUsmStatus(s.status);
+
+  // Always open back on the first tab for a consistent starting point
+  document.querySelectorAll('.usm-tab-btn').forEach((btn,i)=>btn.classList.toggle('active', i===0));
+  document.querySelectorAll('.usm-pane').forEach((pane,i)=>pane.classList.toggle('active', i===0));
+
+  document.getElementById('userSettingsModalBg').classList.add('show');
+}
+
+function closeUserSettingsModal(){
+  document.getElementById('userSettingsModalBg').classList.remove('show');
+  usmTargetId = null;
+}
+
+document.getElementById('userSettingsModalBg').addEventListener('click', e=>{
+  if(e.target.id==='userSettingsModalBg') closeUserSettingsModal();
+});
+
+document.querySelectorAll('.usm-tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.usm-tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.usm-pane').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('usmPane-' + btn.dataset.usmtab).classList.add('active');
+  });
+});
+
+async function saveUserSettingsModal(){
+  const u = appUsers.find(u=>u.id===usmTargetId);
+  if(!u){ closeUserSettingsModal(); return; }
+
+  // Tab 1 — module access (same field/format editUser's checklist already uses)
+  const permissions = Array.from(document.querySelectorAll('.usm-module-perm:checked')).map(c=>c.value);
+
+  // Tab 2 — feature permissions
+  let discountCap = parseFloat(document.getElementById('usm_discountCap').value);
+  if(isNaN(discountCap) || discountCap < 0) discountCap = 0;
+  if(discountCap > 100) discountCap = 100;
+  const canDeleteRecords = document.getElementById('usm_canDelete').checked;
+  const printAccess = {
+    a4: document.getElementById('usm_print_a4').checked,
+    a5: document.getElementById('usm_print_a5').checked,
+    thermal: document.getElementById('usm_print_thermal').checked
+  };
+
+  // Tab 3 — account parameters
+  const role = document.getElementById('usm_role').value;
+  const accountExpiry = document.getElementById('usm_expiry').value || '';
+  const status = usmPendingStatus;
+
+  // Merge onto THIS user's object only — every other key on u (id,
+  // username, password hash, email, name...) and every other entry
+  // in appUsers is left exactly as-is.
+  u.role = role;
+  u.permissions = permissions;
+  u.settings = { discountCap, canDeleteRecords, printAccess, accountExpiry, status };
+
+  const ok = await saveKey('erpUsers', appUsers); // identical scoped key used by add/edit/remove/password-reset
+  closeUserSettingsModal();
+  if(ok) toast(`Settings updated for ${u.name}`);
+  renderManageUsers();
+}
+
+/* ============================================================
    TIER 1: ANJUM WEBS DEVELOPER CONTROL
    Client/School Registry + Module Licensing Matrix.
    Everything here writes to the GLOBAL 'erp_schools' registry —
@@ -3941,17 +4614,234 @@ async function removeUser(id){
    ============================================================ */
 document.getElementById('devMasterUsernameLabel').textContent = MASTER_USERNAME;
 
-/* Phase 1: inner tab switcher for the tabbed Developer Settings Console
-   (Cloud Credentials / Global Feature Flags / School Management / Master
-   Auth & Security) — independent of the outer sidebar's tab-btn system. */
-document.querySelectorAll('.dcc-tab-btn').forEach(btn => {
+/* ============================================================
+   PHASE 2: Compact single-screen redesign — top-level tab
+   switcher for Tenants & Users / License Keys / Feature
+   Requests / Global Config. Independent of the outer sidebar's
+   tab-btn system, and independent of any legacy inner-console
+   tab markup (fully replaced by this single tab bar). */
+document.querySelectorAll('.dcc-maintab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.dcc-tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.dcc-tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.dcc-maintab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.dcc-maintab-pane').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
-    const pane = document.getElementById('devtab-' + btn.dataset.devtab);
+    const pane = document.getElementById('maintab-' + btn.dataset.maintab);
     if(pane) pane.classList.add('active');
+    const label = document.getElementById('dccTopbarCurrent');
+    if(label) label.textContent = btn.textContent.trim();
+    if(btn.dataset.maintab === 'license') renderDevLicenseKeysTab();
+    if(btn.dataset.maintab === 'requests') renderDevFeatureRequestsTab();
+    if(btn.dataset.maintab === 'settingsui') { renderSettingsPanel(); applyBranding(); renderManageUsers(); }
+    if(btn.dataset.maintab === 'cloud') { renderCloudConfigPanel(); renderSchoolDrivePanel(); }
+    if(btn.dataset.maintab === 'matrix' && typeof renderFeatureMatrixTab === 'function') renderFeatureMatrixTab();
+    closeDccDrawer();
   });
+});
+
+/* ---- Command Center left drawer (hamburger-triggered, holds the
+   section list formerly shown as a horizontal top tab row) ---- */
+const dccDrawerEl = document.getElementById('dccDrawer');
+const dccDrawerBackdropEl = document.getElementById('dccDrawerBackdrop');
+function openDccDrawer(){ dccDrawerEl.classList.add('open'); dccDrawerBackdropEl.classList.add('show'); }
+function closeDccDrawer(){ dccDrawerEl.classList.remove('open'); dccDrawerBackdropEl.classList.remove('show'); }
+document.getElementById('dccDrawerBtn').addEventListener('click', openDccDrawer);
+document.getElementById('dccDrawerCloseBtn').addEventListener('click', closeDccDrawer);
+dccDrawerBackdropEl.addEventListener('click', closeDccDrawer);
+
+/* Dark / light theme toggle for the Developer Console only — persisted
+   in this browser's Local Storage, independent of the school-facing
+   Appearance hex customizer below. */
+(function initDevThemeToggle(){
+  const KEY = 'dev_console_theme';
+  const panel = document.getElementById('panel-devcontrol');
+  const btn = document.getElementById('devThemeToggle');
+  const apply = (theme) => {
+    if(theme === 'dark'){ panel.setAttribute('data-dcc-theme','dark'); btn.textContent = '☀'; }
+    else { panel.removeAttribute('data-dcc-theme'); btn.textContent = '🌙'; }
+  };
+  apply(localStorage.getItem(KEY) || 'light');
+  btn.addEventListener('click', () => {
+    const next = panel.getAttribute('data-dcc-theme') === 'dark' ? 'light' : 'dark';
+    localStorage.setItem(KEY, next);
+    apply(next);
+  });
+})();
+
+/* ------------------------------------------------------------
+   LICENSE KEYS TAB — wraps the existing ERPLicenseEngine crypto
+   module with a small admin UI. Keys are signed with a passphrase
+   the developer sets once under Global Config (defaults to an
+   auto-generated one so the button works out of the box). Issued
+   keys are logged locally purely for the admin's own reference —
+   validity itself lives entirely inside the encrypted payload.
+   ------------------------------------------------------------ */
+function getDevLicenseSecret(){
+  let secret = localStorage.getItem('dev_license_secret');
+  if(!secret){
+    secret = 'anjumwebs-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem('dev_license_secret', secret);
+  }
+  return secret;
+}
+function getDevLicenseKeysLog(){
+  try{ return JSON.parse(localStorage.getItem('dev_license_keys_log') || '[]'); }
+  catch(e){ return []; }
+}
+function saveDevLicenseKeysLog(list){
+  localStorage.setItem('dev_license_keys_log', JSON.stringify(list));
+}
+function renderDevLicenseKeysTab(){
+  const secretInput = document.getElementById('devLicenseSecretInput');
+  if(secretInput && !secretInput.value) secretInput.value = getDevLicenseSecret();
+
+  const sel = document.getElementById('devlk_school');
+  if(sel){
+    const current = sel.value;
+    sel.innerHTML = schools.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('') || `<option value="">No schools yet</option>`;
+    if(current && schools.some(s=>s.id===current)) sel.value = current;
+  }
+
+  const tbody = document.getElementById('devLicenseKeysTable');
+  if(!tbody) return;
+  const log = getDevLicenseKeysLog();
+  tbody.innerHTML = log.slice().reverse().map((entry, revIdx) => {
+    const idx = log.length - 1 - revIdx;
+    return `
+    <tr>
+      <td><b>${escapeHtml(entry.schoolName)}</b></td>
+      <td class="lk-key">${escapeHtml(entry.key.slice(0,28))}…</td>
+      <td>${escapeHtml(entry.expiryDate || '—')}</td>
+      <td>${new Date(entry.issuedAt).toLocaleDateString()}</td>
+      <td><button class="btn small secondary" type="button" onclick="navigator.clipboard.writeText(${JSON.stringify(entry.key)});toast('License key copied')">📋 Copy</button></td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="5" class="dcc-empty-state">No license keys generated yet</td></tr>`;
+}
+document.getElementById('devlk_generateBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('devlk_status');
+  const schoolId = document.getElementById('devlk_school').value;
+  const school = schools.find(s => s.id === schoolId);
+  if(!school){ statusEl.textContent = 'Pick a client school first.'; return; }
+  const expiryDate = document.getElementById('devlk_expiry').value;
+  const deviceLimit = parseInt(document.getElementById('devlk_deviceLimit').value, 10) || 1;
+  statusEl.textContent = 'Generating…';
+  try{
+    const key = await ERPLicenseEngine.issueLicenseKey({
+      clientId: school.id,
+      clientName: school.name,
+      expiryDate: expiryDate || null,
+      deviceLimit,
+      features: Object.keys(school.moduleFlags || {}).filter(k => school.moduleFlags[k])
+    }, getDevLicenseSecret());
+    document.getElementById('devlk_output').value = key;
+    document.getElementById('devlk_outputWrap').style.display = 'block';
+    statusEl.textContent = '✅ Key generated — copy it to the school owner.';
+    const log = getDevLicenseKeysLog();
+    log.push({ schoolId: school.id, schoolName: school.name, key, expiryDate: expiryDate || null, issuedAt: new Date().toISOString() });
+    saveDevLicenseKeysLog(log);
+    renderDevLicenseKeysTab();
+  }catch(e){
+    statusEl.textContent = 'Could not generate key: ' + e.message;
+  }
+});
+document.getElementById('devlk_copyBtn').addEventListener('click', () => {
+  const out = document.getElementById('devlk_output');
+  if(!out.value) return;
+  navigator.clipboard.writeText(out.value);
+  toast('License key copied');
+});
+document.getElementById('devLicenseSecretSaveBtn').addEventListener('click', () => {
+  const val = document.getElementById('devLicenseSecretInput').value.trim();
+  const statusEl = document.getElementById('devLicenseSecretStatus');
+  if(!val){ statusEl.textContent = 'Passphrase cannot be empty.'; return; }
+  localStorage.setItem('dev_license_secret', val);
+  statusEl.textContent = '✅ Saved. Future keys sign with this passphrase.';
+});
+
+/* ------------------------------------------------------------
+   FEATURE REQUESTS TAB — aggregates every school's pending
+   upgradeRequests (Phase 3 upsell system) into one flat table,
+   reusing the existing approveUpgradeRequest / dismissUpgradeRequest
+   handlers so behaviour is identical to the inline version.
+   ------------------------------------------------------------ */
+function renderDevFeatureRequestsTab(){
+  const tbody = document.getElementById('devFeatureRequestsTable');
+  const badge = document.getElementById('devReqBadge');
+  if(!tbody) return;
+  const rows = [];
+  schools.forEach(s => {
+    (s.upgradeRequests || []).filter(r => r.status === 'pending').forEach(r => {
+      rows.push({ school: s, req: r });
+    });
+  });
+  if(badge){
+    badge.textContent = rows.length;
+    badge.style.display = rows.length ? 'inline-block' : 'none';
+  }
+  tbody.innerHTML = rows.map(({school, req}) => `
+    <tr>
+      <td><b>${escapeHtml(school.name)}</b></td>
+      <td>${escapeHtml(req.label || req.module)}</td>
+      <td class="muted">${req.requestedAt ? new Date(req.requestedAt).toLocaleDateString() : '—'}</td>
+      <td>
+        <button class="btn small gold" onclick="approveUpgradeRequest('${school.id}','${req.module}').then(renderDevFeatureRequestsTab)">✅ Approve</button>
+        <button class="btn small ghost" onclick="dismissUpgradeRequest('${school.id}','${req.module}').then(renderDevFeatureRequestsTab)">✕ Dismiss</button>
+      </td>
+    </tr>`).join('') || `<tr><td colspan="4" class="dcc-empty-state">🎉 No pending feature requests — you're all caught up.</td></tr>`;
+}
+
+/* ------------------------------------------------------------
+   GLOBAL CONFIG TAB — System Maintenance toggle, WhatsApp support
+   number, and a broadcast composer wired directly into the
+   existing Global Broadcast & Announcement Engine's Firestore
+   schema (collection 'broadcasts', targetClientId/type/message),
+   so client installs pick these up with zero changes on their side.
+   ------------------------------------------------------------ */
+function loadDevGlobalConfig(){
+  try{ return JSON.parse(localStorage.getItem('dev_global_config') || '{}'); }
+  catch(e){ return {}; }
+}
+(function initDevGlobalConfigFields(){
+  const cfg = loadDevGlobalConfig();
+  document.getElementById('devMaintenanceToggle').checked = !!cfg.maintenanceMode;
+  document.getElementById('devSupportWhatsapp').value = cfg.supportWhatsapp || '';
+})();
+document.getElementById('devSaveGlobalConfigBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('devGlobalConfigStatus');
+  const cfg = {
+    maintenanceMode: document.getElementById('devMaintenanceToggle').checked,
+    supportWhatsapp: document.getElementById('devSupportWhatsapp').value.trim()
+  };
+  localStorage.setItem('dev_global_config', JSON.stringify(cfg));
+  statusEl.textContent = '✅ Saved locally.';
+  try{
+    if(typeof firebaseDb !== 'undefined' && firebaseDb){
+      await firebaseDb.collection('config').doc('global').set(cfg, {merge:true});
+      statusEl.textContent = '✅ Saved and synced to Firebase.';
+    }
+  }catch(e){ /* offline / not configured — local save above still stands */ }
+});
+document.getElementById('devAnnounceSendBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('devAnnounceStatus');
+  const message = document.getElementById('devAnnounceMsg').value.trim();
+  const type = document.getElementById('devAnnounceType').value;
+  if(!message){ statusEl.textContent = 'Write a message first.'; return; }
+  if(typeof firebaseDb === 'undefined' || !firebaseDb){
+    statusEl.textContent = 'Firebase Sync isn\'t configured — enable it under Global Config to broadcast.';
+    return;
+  }
+  statusEl.textContent = 'Sending…';
+  try{
+    await firebaseDb.collection('broadcasts').add({
+      targetClientId: 'ALL_CLIENTS',
+      type,
+      message,
+      createdAt: new Date()
+    });
+    statusEl.textContent = '✅ Broadcast sent to all client schools.';
+    document.getElementById('devAnnounceMsg').value = '';
+  }catch(e){
+    statusEl.textContent = 'Could not send broadcast: ' + e.message;
+  }
 });
 
 document.getElementById('devUpdateMasterPwBtn').addEventListener('click', async ()=>{
@@ -4068,49 +4958,247 @@ function renderDevSchoolCards(activeCounts){
       ${s.expiryDate ? `<p class="dcc-muted" style="margin:6px 0 0;font-size:11.5px;">📅 Expires: ${escapeHtml(s.expiryDate)}</p>` : ''}
       <div class="dcc-card-actions">
         <button class="btn small gold" onclick="openSchoolSettingsAsDev('${s.id}')">🔍 Inspect ERP</button>
-        <button class="btn small secondary" onclick="openDevQuickSettings('${s.id}')">⚙ Quick Settings</button>
+        <button class="btn small secondary" onclick="openTenantSettingsModal('${s.id}')">⚙ Settings &amp; Configuration</button>
         <button class="btn small secondary" onclick="openRemoteControlModal('${s.id}')">🎛 Remote Control</button>
+        <button class="btn small ghost" onclick="openTenantPasswordResetModal('${s.id}')">🔑 Reset Password</button>
       </div>
     </div>`;
-  }).join('') || `<p class="dcc-muted">No client schools provisioned yet — add one under the School Management tab below.</p>`;
+  }).join('') || `<p class="dcc-muted">No client schools provisioned yet — use "Provision New Tenant" above.</p>`;
 }
 
-/* Phase 1: "Quick Settings" — a lightweight, in-place license toggle
-   panel for one school, reached straight from its card without leaving
-   the Command Center (as opposed to "Inspect ERP", which switches full
-   context into that school's own app shell). Reuses the existing modal. */
-function openDevQuickSettings(schoolId){
+/* ---- Tenant "Settings & Configuration" modal ----------------------
+   Consolidates everything that used to be scattered across a Quick
+   Settings popup + a cross-tenant Module Licensing Matrix table +
+   the school-facing Settings & UI screen into ONE per-tenant modal,
+   reached from a single card button. Every read/write here is scoped
+   to exactly this schoolId (via scopedKeyFor) — it never touches
+   global/developer defaults or any other tenant, and it works whether
+   or not this school happens to be the one currently open via
+   "Inspect ERP". ---------------------------------------------------- */
+async function openTenantSettingsModal(schoolId){
   const school = schools.find(s => s.id === schoolId);
   if(!school){ toast('School not found'); return; }
   ensureSchoolFeatures(school);
+  ensureSchoolModuleConfig(school);
+
   document.getElementById('printArea').innerHTML = `
-    <div style="padding:22px 24px;">
+    <div class="admin-fullscreen-wrap" style="padding:22px 24px;">
       <span class="close-x" onclick="closeModal()">&times;</span>
-      <h2 style="margin:0 0 4px;color:var(--navy-2);">⚙ Quick Settings — ${escapeHtml(school.name)}</h2>
-      <p class="muted" style="margin:0 0 16px;">Toggle this school's licensed modules instantly without leaving the Command Center.</p>
-      <label style="font-size:13px;font-weight:600;color:var(--navy-2);">Owner's Google account email</label>
-      <p class="muted" style="margin:2px 0 8px;font-size:12px;">Lets the owner use "Sign in with Google" instead of their username/password. Leave blank to keep it password-only.</p>
-      <div class="row" style="margin-bottom:4px;">
-        <div style="flex:1;"><input type="email" id="dqs_ownerEmail" placeholder="owner@gmail.com" value="${escapeHtml(school.ownerEmail || '')}"></div>
-        <button class="btn small gold" id="dqs_saveEmailBtn" style="flex:0 0 auto;">Save</button>
-      </div>
-      <hr style="margin:16px 0;border:none;border-top:1px solid #eee;">
-      ${FEATURE_DEFS.map(f => `
-        <label class="checkfee">
-          <input type="checkbox" class="dqs-feature" data-feature="${f.key}" ${school.features[f.key] ? 'checked' : ''}>
-          <span>${escapeHtml(f.label)}</span>
-        </label>`).join('')}
+      <h2 style="margin:0 0 4px;color:var(--navy-2);">⚙ Settings &amp; Configuration — ${escapeHtml(school.name)}</h2>
+      <p class="muted" style="margin:0 0 16px;">Everything below applies only to this tenant's own instance — never to global/developer defaults or any other school.</p>
+      <p class="muted" id="tsm_loading">Loading tenant settings…</p>
+      <div id="tsm_body"></div>
     </div>`;
-  document.querySelectorAll('.dqs-feature').forEach(cb => {
-    cb.addEventListener('change', async () => {
-      school.features[cb.dataset.feature] = cb.checked;
-      await saveGlobal('erp_schools', schools);
-      toast(`${escapeHtml(school.name)}: ${FEATURE_DEFS.find(f => f.key === cb.dataset.feature).label} ${cb.checked ? 'enabled' : 'disabled'}`);
-      renderDevControl();
+  openModal(false, true, undefined, true, true);
+
+  let tenantSettings;
+  try{
+    tenantSettings = (await lsRead(scopedKeyFor(schoolId, 'settings'), null)) || defaultSettings();
+  }catch(e){
+    console.error('Tenant settings load failed:', e);
+    tenantSettings = defaultSettings();
+  }
+  if(!tenantSettings.school) tenantSettings.school = defaultSettings().school;
+  if(!tenantSettings.customColors) tenantSettings.customColors = {};
+  if(!tenantSettings.theme) tenantSettings.theme = 'navy';
+  if(typeof tenantSettings.enableBulkVoucherGeneration !== 'boolean') tenantSettings.enableBulkVoucherGeneration = true;
+  if(!tenantSettings.classes || !tenantSettings.classes.length) tenantSettings.classes = defaultSettings().classes;
+  if(!tenantSettings.feeHeads || !tenantSettings.feeHeads.length) tenantSettings.feeHeads = defaultSettings().feeHeads;
+  if(!tenantSettings.classSections) tenantSettings.classSections = {};
+
+  // Tenant-scoped staff login accounts (Manager/Accountant/Teacher), loaded
+  // the same way tenantSettings is above — via scopedKeyFor(schoolId,...)
+  // so it never touches the live session's appUsers, even if this same
+  // school happens to be open elsewhere via "Inspect ERP".
+  let tenantStaffUsers;
+  try{
+    tenantStaffUsers = (await lsRead(scopedKeyFor(schoolId, 'erpUsers'), null)) || [];
+  }catch(e){
+    console.error('Tenant staff load failed:', e);
+    tenantStaffUsers = [];
+  }
+  let tsmEditingStaffId = null;
+  async function persistTenantStaff(){
+    return await lsWrite(scopedKeyFor(schoolId, 'erpUsers'), tenantStaffUsers);
+  }
+
+  async function persistTenantSettings(){
+    const ok = await lsWrite(scopedKeyFor(schoolId, 'settings'), tenantSettings);
+    // Keep the in-memory `settings` object in sync too, if this tenant
+    // happens to also be the one currently open via Inspect ERP.
+    if(currentSchoolId === schoolId) settings = tenantSettings;
+    return ok;
+  }
+
+  const loadingEl = document.getElementById('tsm_loading');
+  if(loadingEl) loadingEl.style.display = 'none';
+  const body = document.getElementById('tsm_body');
+  if(!body) return; // modal was closed while settings were loading
+  body.classList.add('show');
+  const sch = tenantSettings.school;
+
+  body.innerHTML = `
+    <div class="dcc-console" style="box-shadow:none;border:1px solid var(--line);">
+      <div class="dcc-console-tabs">
+        <button type="button" class="dcc-tab-btn active" data-tsm-tab="profile">🏫 Profile &amp; Branding</button>
+        <button type="button" class="dcc-tab-btn" data-tsm-tab="theme">🎨 Settings &amp; UI</button>
+        <button type="button" class="dcc-tab-btn" data-tsm-tab="features">🧩 Feature Toggles &amp; Licensing</button>
+        <button type="button" class="dcc-tab-btn" data-tsm-tab="package">📦 Package Tier</button>
+        <button type="button" class="dcc-tab-btn" data-tsm-tab="academic">🏷 Academic Settings</button>
+        <button type="button" class="dcc-tab-btn" data-tsm-tab="staff">👥 Staff Management</button>
+        <button type="button" class="dcc-tab-btn" data-tsm-tab="backup">💾 Backup &amp; Restore</button>
+      </div>
+      <div class="dcc-console-body">
+
+        <div class="dcc-tab-pane active" id="tsm-pane-profile">
+          <label style="font-size:13px;font-weight:600;color:var(--navy-2);">Owner's Google account email</label>
+          <p class="muted" style="margin:2px 0 8px;font-size:12px;">Lets the owner use "Sign in with Google" instead of their username/password. Leave blank to keep it password-only.</p>
+          <div class="row" style="margin-bottom:14px;">
+            <div style="flex:1;"><input type="email" id="tsm_ownerEmail" placeholder="owner@gmail.com" value="${escapeHtml(school.ownerEmail || '')}"></div>
+            <button class="btn small gold" id="tsm_saveEmailBtn" type="button" style="flex:0 0 auto;">Save</button>
+          </div>
+          <hr style="margin:14px 0;border:none;border-top:1px solid #eee;">
+          <label>School Name *</label>
+          <input type="text" id="tsm_schoolName" value="${escapeHtml(sch.name||'')}" placeholder="e.g. Al-Noor School">
+          <label>Tagline / Subtitle</label>
+          <input type="text" id="tsm_slogan" value="${escapeHtml(sch.slogan||'')}" placeholder="e.g. Excellence in Education">
+          <label>School Address</label>
+          <textarea id="tsm_address" rows="2" placeholder="e.g. 45 Canal Road, Lahore, Punjab">${escapeHtml(sch.address||'')}</textarea>
+          <div class="row">
+            <div><label>Contact Phone</label><input type="text" id="tsm_phone" value="${escapeHtml(sch.phone||'')}"></div>
+            <div><label>Contact Email</label><input type="text" id="tsm_email" value="${escapeHtml(sch.email||'')}"></div>
+          </div>
+          <label>School Logo URL</label>
+          <input type="text" id="tsm_logoUrl" value="${escapeHtml(sch.monoImage||'')}" placeholder="https://example.com/logo.png">
+          <button class="btn gold" id="tsm_saveProfileBtn" type="button" style="margin-top:12px;">Save Profile &amp; Branding</button>
+        </div>
+
+        <div class="dcc-tab-pane" id="tsm-pane-theme">
+          <label>Colour Theme Preset</label>
+          <div class="theme-swatches" id="tsm_themeSwatches">
+            <button type="button" class="theme-swatch-btn" data-theme="navy"><span class="swatch" style="background:#16324f;"></span>Navy</button>
+            <button type="button" class="theme-swatch-btn" data-theme="teal"><span class="swatch" style="background:#0f5c52;"></span>Teal</button>
+            <button type="button" class="theme-swatch-btn" data-theme="burgundy"><span class="swatch" style="background:#7a1f2b;"></span>Burgundy</button>
+            <button type="button" class="theme-swatch-btn" data-theme="slate"><span class="swatch" style="background:#3d4a5c;"></span>Slate</button>
+            <button type="button" class="theme-swatch-btn" data-theme="dark"><span class="swatch" style="background:#0e141b;"></span>Dark Mode</button>
+          </div>
+          <p class="muted" style="margin-top:10px;">Applies the moment this tenant's Super Admin next opens their ERP.</p>
+          <label style="margin-top:18px;">Advanced Custom Hex Colours</label>
+          <p class="muted" style="margin-top:2px;">Fine-tune this tenant's exact palette — main text/heading colour included. Saved and applied only inside this school's own instance; every other tenant is unaffected.</p>
+          <div class="hex-customizer" id="tsm_hexCustomizer"></div>
+          <div class="hex-customizer-actions">
+            <button class="btn ghost small" id="tsm_hexResetBtn" type="button">Reset to Preset Colours</button>
+          </div>
+        </div>
+
+        <div class="dcc-tab-pane" id="tsm-pane-features">
+          <div class="toggle-row" style="margin-bottom:10px;">
+            <div class="toggle-label"><b>Bulk Voucher Generation</b><span>Shows the "Bulk Vouchers" button in this school's Fee Collection screen.</span></div>
+            <label class="toggle-switch"><input type="checkbox" id="tsm_bulkVoucher" ${tenantSettings.enableBulkVoucherGeneration?'checked':''}><span class="toggle-slider"></span></label>
+          </div>
+          <hr style="margin:14px 0;border:none;border-top:1px solid #eee;">
+          <p class="muted" style="margin:0 0 8px;">Every module this school's Super Admin can ever see is toggled here — this is the master ceiling of their access, right down to WhatsApp Alerts. Changes save and apply instantly; locked modules disappear from their sidebar immediately.</p>
+          ${FEATURE_DEFS.map(f => `
+            <label class="checkfee">
+              <input type="checkbox" class="tsm-feature" data-feature="${f.key}" ${school.features[f.key] ? 'checked' : ''}>
+              <span>${escapeHtml(f.label)}</span>
+            </label>`).join('')}
+        </div>
+
+        <div class="dcc-tab-pane" id="tsm-pane-package">
+          <label style="font-size:13px;font-weight:600;color:var(--navy-2);">Feature Package</label>
+          <select id="tsm_package">
+            ${Object.keys(PACKAGES).map(p => `<option value="${p}" ${school.package===p?'selected':''}>${p}</option>`).join('')}
+          </select>
+          <p class="muted" style="margin:6px 0 10px;font-size:12px;">Basic / Standard / Premium auto-fill the add-on modules below for this tenant. Custom leaves them for manual control.</p>
+          <div id="tsm_moduleBox"></div>
+        </div>
+
+        <div class="dcc-tab-pane" id="tsm-pane-academic">
+          <h2 style="margin-top:0;">Classes &amp; Sections</h2>
+          <p class="muted">Add each class, then add its sections (e.g. Class 9 → A, B) underneath it. Applies only to ${escapeHtml(school.name)}.</p>
+          <div class="row">
+            <div><input type="text" id="tsm_newClassInput" placeholder="e.g. Class 11"></div>
+            <div style="flex:0 0 auto;"><button class="btn small" id="tsm_addClassBtn" type="button" style="margin-top:0;">Add Class</button></div>
+          </div>
+          <div id="tsm_classList" style="margin-top:14px;"></div>
+
+          <hr style="margin:20px 0;border:none;border-top:1px solid #eee;">
+
+          <h2>Fee Heads</h2>
+          <div class="row">
+            <div><input type="text" id="tsm_newFeeNameInput" placeholder="Fee head name"></div>
+          </div>
+          <div class="row">
+            <div><input type="number" id="tsm_newFeeAmountInput" placeholder="Default amount" value="0"></div>
+            <div style="flex:0 0 auto;"><button class="btn small" id="tsm_addFeeHeadBtn" type="button" style="margin-top:0;">Add Fee Head</button></div>
+          </div>
+          <div id="tsm_feeList" style="margin-top:14px;"></div>
+        </div>
+
+        <div class="dcc-tab-pane" id="tsm-pane-staff">
+          <h2 style="margin-top:0;">Staff User Management</h2>
+          <p class="muted">Create login accounts for ${escapeHtml(school.name)}'s employees (Manager, Accountant, Teacher) and assign each one a feature-access checklist. Only modules licensed for this school below can be checked.</p>
+          <div class="row">
+            <div><input type="text" id="tsm_nu_name" placeholder="Full name"></div>
+            <div><input type="text" id="tsm_nu_username" placeholder="Username"></div>
+          </div>
+          <div class="row">
+            <div><input type="email" id="tsm_nu_email" placeholder="Google account email (for Sign in with Google) — optional"></div>
+          </div>
+          <div class="row">
+            <div><input type="password" id="tsm_nu_password" placeholder="Password"></div>
+            <div>
+              <select id="tsm_nu_role">
+                <option value="Manager">Manager (Admin Staff)</option>
+                <option value="Accountant">Accountant</option>
+                <option value="Teacher">Teacher</option>
+              </select>
+            </div>
+          </div>
+          <label style="margin-top:14px;">Feature Access Checklist</label>
+          <div id="tsm_nu_permBox"></div>
+          <div style="display:flex;gap:10px;">
+            <button class="btn small" id="tsm_addUserBtn" type="button">Add User</button>
+            <button class="btn small ghost" id="tsm_cancelEditUserBtn" type="button" style="display:none;">Cancel Edit</button>
+          </div>
+          <table>
+            <thead><tr><th>Full Name</th><th>Username</th><th>Assigned Role</th><th>Assigned Features</th><th></th></tr></thead>
+            <tbody id="tsm_manageUsersTable"></tbody>
+          </table>
+        </div>
+
+        <div class="dcc-tab-pane" id="tsm-pane-backup">
+          <h2 style="margin-top:0;">Database Backup &amp; Export</h2>
+          <p class="muted">Exports ${escapeHtml(school.name)}'s complete dataset — Students, Fees History, Expenses, Staff Payroll, Staff Logins and Settings — as a single <code>.xlsx</code> workbook with one sheet per table. Only this tenant's data is included.</p>
+          <button class="btn secondary" id="tsm_bk_exportBtn" type="button">⬇ Export Database (.xlsx)</button>
+          <p class="muted" id="tsm_bk_exportStatus" style="margin-top:8px;"></p>
+
+          <h3>Database Restore &amp; Import</h3>
+          <p class="muted">Upload a previously exported <code>.xlsx</code> backup to restore this tenant's data. Every row is validated and mapped by column header before anything is written — malformed files are rejected safely. Restoring here writes directly to ${escapeHtml(school.name)}'s storage; if this tenant is also open elsewhere via "Inspect ERP", refresh that view afterwards.</p>
+          <div class="row">
+            <div>
+              <button class="btn ghost" id="tsm_bk_importTrigger" type="button">⬆ Restore From Backup</button>
+              <input type="file" id="tsm_bk_importFile" accept=".xlsx,.xls,.csv" style="display:none;">
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>`;
+
+  // ---- sub-tab switching ----
+  document.querySelectorAll('#tsm_body .dcc-tab-btn[data-tsm-tab]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#tsm_body .dcc-tab-btn[data-tsm-tab]').forEach(b=>b.classList.toggle('active', b===btn));
+      document.querySelectorAll('#tsm_body .dcc-tab-pane').forEach(p=>p.classList.remove('active'));
+      document.getElementById('tsm-pane-'+btn.dataset.tsmTab).classList.add('active');
     });
   });
-  document.getElementById('dqs_saveEmailBtn').addEventListener('click', async () => {
-    const email = document.getElementById('dqs_ownerEmail').value.trim().toLowerCase();
+
+  // ---- Profile & Branding ----
+  document.getElementById('tsm_saveEmailBtn').addEventListener('click', async ()=>{
+    const email = document.getElementById('tsm_ownerEmail').value.trim().toLowerCase();
     if(email && schools.some(s=>s.id!==school.id && (s.ownerEmail||'').toLowerCase()===email)){
       toast('That Google account email is already linked to another school'); return;
     }
@@ -4119,7 +5207,518 @@ function openDevQuickSettings(schoolId){
     toast(email ? 'Owner Google email saved' : 'Owner Google email cleared');
     renderDevControl();
   });
-  openModal(false, true);
+  document.getElementById('tsm_saveProfileBtn').addEventListener('click', async ()=>{
+    const name = document.getElementById('tsm_schoolName').value.trim();
+    if(!name){ toast('Enter a school name'); return; }
+    tenantSettings.school = {
+      ...(tenantSettings.school || {}),
+      name,
+      slogan: document.getElementById('tsm_slogan').value.trim(),
+      address: document.getElementById('tsm_address').value.trim(),
+      phone: document.getElementById('tsm_phone').value.trim(),
+      email: document.getElementById('tsm_email').value.trim(),
+      monoImage: document.getElementById('tsm_logoUrl').value.trim()
+    };
+    await persistTenantSettings();
+    toast('Profile & branding saved for this tenant');
+  });
+
+  // ---- Theme & UI ----
+  document.querySelectorAll('#tsm_themeSwatches .theme-swatch-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.theme === tenantSettings.theme);
+    b.addEventListener('click', async ()=>{
+      tenantSettings.theme = b.dataset.theme;
+      await persistTenantSettings();
+      document.querySelectorAll('#tsm_themeSwatches .theme-swatch-btn').forEach(x=>x.classList.toggle('active', x===b));
+      toast(`Theme switched to ${b.textContent.trim()} for this tenant`);
+    });
+  });
+  function tsmRenderHexCustomizer(){
+    const container = document.getElementById('tsm_hexCustomizer');
+    if(!container) return;
+    container.innerHTML = SCHOOL_HEX_FIELDS.map(f=>{
+      const val = tenantSettings.customColors[f.varName] || f.defaultHex;
+      return `
+        <div class="hex-row">
+          <span class="hex-label">${f.label}</span>
+          <input type="color" data-var="${f.varName}" value="${normalizeHex3(val)}">
+          <input type="text" class="hex-text" data-var="${f.varName}" value="${val}" maxlength="7" placeholder="#RRGGBB">
+        </div>`;
+    }).join('');
+    container.querySelectorAll('input[type="color"]').forEach(picker=>{
+      picker.addEventListener('change', async ()=>{
+        tenantSettings.customColors[picker.dataset.var] = picker.value;
+        await persistTenantSettings();
+        const twin = container.querySelector(`.hex-text[data-var="${picker.dataset.var}"]`);
+        if(twin) twin.value = picker.value;
+        toast('Colour saved for this tenant');
+      });
+    });
+    container.querySelectorAll('input.hex-text').forEach(textInput=>{
+      textInput.addEventListener('change', async ()=>{
+        let hex = textInput.value.trim();
+        if(!hex.startsWith('#')) hex = '#' + hex;
+        if(!HEX_RE.test(hex)) return;
+        tenantSettings.customColors[textInput.dataset.var] = hex;
+        await persistTenantSettings();
+        const twin = container.querySelector(`input[type="color"][data-var="${textInput.dataset.var}"]`);
+        if(twin) twin.value = normalizeHex3(hex);
+        toast('Colour saved for this tenant');
+      });
+    });
+  }
+  tsmRenderHexCustomizer();
+  document.getElementById('tsm_hexResetBtn').addEventListener('click', async ()=>{
+    tenantSettings.customColors = {};
+    await persistTenantSettings();
+    tsmRenderHexCustomizer();
+    toast('Reset to preset colours for this tenant');
+  });
+
+  // ---- Feature Toggles & Licensing Matrix ----
+  document.getElementById('tsm_bulkVoucher').addEventListener('change', async (e)=>{
+    tenantSettings.enableBulkVoucherGeneration = e.target.checked;
+    await persistTenantSettings();
+    toast(`Bulk Voucher Generation ${e.target.checked ? 'enabled' : 'disabled'} for this tenant`);
+  });
+  document.querySelectorAll('.tsm-feature').forEach(cb => {
+    cb.addEventListener('change', async () => {
+      school.features[cb.dataset.feature] = cb.checked;
+      await saveGlobal('erp_schools', schools);
+      toast(`${escapeHtml(school.name)}: ${FEATURE_DEFS.find(f => f.key === cb.dataset.feature).label} ${cb.checked ? 'enabled' : 'disabled'}`);
+      renderDevControl();
+    });
+  });
+
+  // ---- Package Tier Allocation ----
+  function tsmRenderModuleBox(){
+    const box = document.getElementById('tsm_moduleBox');
+    if(!box) return;
+    box.innerHTML = MODULE_DEFS.map(m => `
+      <label class="checkfee">
+        <input type="checkbox" class="tsm-module" data-module="${m.key}" ${school.moduleFlags[m.key] ? 'checked' : ''}>
+        <span>${escapeHtml(m.label)}</span>
+      </label>`).join('');
+    box.querySelectorAll('.tsm-module').forEach(cb => {
+      cb.addEventListener('change', async () => {
+        school.moduleFlags[cb.dataset.module] = cb.checked;
+        await saveGlobal('erp_schools', schools);
+        await saveSchoolModuleConfigToFirestore(school);
+        toast(`${escapeHtml(school.name)}: ${MODULE_DEFS.find(m => m.key === cb.dataset.module).label} ${cb.checked ? 'enabled' : 'disabled'}`);
+      });
+    });
+  }
+  tsmRenderModuleBox();
+  document.getElementById('tsm_package').addEventListener('change', async (e) => {
+    school.package = e.target.value;
+    const preset = PACKAGES[e.target.value];
+    if(preset) school.moduleFlags = Object.assign({}, preset); // Custom leaves existing flags alone
+    await saveGlobal('erp_schools', schools);
+    await saveSchoolModuleConfigToFirestore(school);
+    tsmRenderModuleBox();
+    renderDevControl();
+    toast(`${escapeHtml(school.name)}: package set to ${e.target.value}`);
+  });
+
+  // ---- Academic Settings: Classes & Sections, Fee Heads ----
+  function tsmRenderAcademic(){
+    const classBox = document.getElementById('tsm_classList');
+    if(classBox){
+      const classSections = tenantSettings.classSections || {};
+      classBox.innerHTML = tenantSettings.classes.map(c=>{
+        const sections = classSections[c] || [];
+        const chips = sections.map(sec=>`
+          <span class="pill due" style="display:inline-flex;align-items:center;gap:6px;margin:3px 4px 0 0;">
+            ${escapeHtml(sec)}
+            <span class="tsm-remove-section" data-class="${escapeHtml(c)}" data-section="${escapeHtml(sec)}" style="cursor:pointer;font-weight:800;">&times;</span>
+          </span>`).join('') || `<span class="muted" style="font-size:12px;">No sections yet</span>`;
+        return `
+        <div class="settings-row" style="flex-direction:column;align-items:stretch;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span class="name">${escapeHtml(c)}</span>
+            <button class="btn small danger tsm-remove-class" type="button" data-class="${escapeHtml(c)}">Remove</button>
+          </div>
+          <div style="margin:8px 0 6px;">${chips}</div>
+          <div class="row" style="gap:8px;">
+            <div><input type="text" class="tsm-new-section-input" data-class="${escapeHtml(c)}" placeholder="e.g. A" style="padding:6px 8px;font-size:12.5px;"></div>
+            <div style="flex:0 0 auto;"><button class="btn small ghost tsm-add-section" type="button" style="margin-top:0;" data-class="${escapeHtml(c)}">Add Section</button></div>
+          </div>
+        </div>`;
+      }).join('') || `<p class="muted">No classes configured yet.</p>`;
+
+      classBox.querySelectorAll('.tsm-remove-class').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const name = btn.dataset.class;
+          if(!confirm(`Remove class "${name}"? This does not affect already-registered students.`)) return;
+          tenantSettings.classes = tenantSettings.classes.filter(c=>c!==name);
+          if(tenantSettings.classSections) delete tenantSettings.classSections[name];
+          await persistTenantSettings();
+          tsmRenderAcademic();
+          toast('Class removed for this tenant');
+        });
+      });
+      classBox.querySelectorAll('.tsm-remove-section').forEach(el=>{
+        el.addEventListener('click', async ()=>{
+          const c = el.dataset.class, sec = el.dataset.section;
+          if(tenantSettings.classSections && tenantSettings.classSections[c]){
+            tenantSettings.classSections[c] = tenantSettings.classSections[c].filter(s=>s!==sec);
+          }
+          await persistTenantSettings();
+          tsmRenderAcademic();
+          toast('Section removed for this tenant');
+        });
+      });
+      classBox.querySelectorAll('.tsm-add-section').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const c = btn.dataset.class;
+          const input = classBox.querySelector(`.tsm-new-section-input[data-class="${CSS.escape(c)}"]`);
+          const sec = (input.value || '').trim();
+          if(!sec) return;
+          if(!tenantSettings.classSections) tenantSettings.classSections = {};
+          const list = tenantSettings.classSections[c] || (tenantSettings.classSections[c] = []);
+          if(list.some(s=>s.toLowerCase()===sec.toLowerCase())){ toast('That section already exists'); return; }
+          list.push(sec);
+          await persistTenantSettings();
+          tsmRenderAcademic();
+          toast('Section added for this tenant');
+        });
+      });
+    }
+
+    const feeBox = document.getElementById('tsm_feeList');
+    if(feeBox){
+      feeBox.innerHTML = tenantSettings.feeHeads.map((f,i)=>`
+        <div class="settings-row">
+          <span class="name">${escapeHtml(f.name)}</span>
+          <input type="number" class="tsm-fee-amount" data-idx="${i}" value="${f.amount}">
+          <button class="btn small danger tsm-remove-fee" type="button" data-idx="${i}">Remove</button>
+        </div>`).join('') || `<p class="muted">No fee heads configured yet.</p>`;
+
+      feeBox.querySelectorAll('.tsm-fee-amount').forEach(inp=>{
+        inp.addEventListener('change', async ()=>{
+          const idx = Number(inp.dataset.idx);
+          tenantSettings.feeHeads[idx].amount = Number(inp.value || 0);
+          await persistTenantSettings();
+          toast('Fee head amount saved for this tenant');
+        });
+      });
+      feeBox.querySelectorAll('.tsm-remove-fee').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const idx = Number(btn.dataset.idx);
+          if(!confirm(`Remove fee head "${tenantSettings.feeHeads[idx].name}"?`)) return;
+          tenantSettings.feeHeads.splice(idx,1);
+          await persistTenantSettings();
+          tsmRenderAcademic();
+          toast('Fee head removed for this tenant');
+        });
+      });
+    }
+  }
+  tsmRenderAcademic();
+  document.getElementById('tsm_addClassBtn').addEventListener('click', async ()=>{
+    const input = document.getElementById('tsm_newClassInput');
+    const name = (input.value || '').trim();
+    if(!name) return;
+    if(tenantSettings.classes.some(c=>c.toLowerCase()===name.toLowerCase())){ toast('That class already exists'); return; }
+    tenantSettings.classes.push(name);
+    await persistTenantSettings();
+    input.value = '';
+    tsmRenderAcademic();
+    toast('Class added for this tenant');
+  });
+  document.getElementById('tsm_addFeeHeadBtn').addEventListener('click', async ()=>{
+    const nameInput = document.getElementById('tsm_newFeeNameInput');
+    const amountInput = document.getElementById('tsm_newFeeAmountInput');
+    const name = (nameInput.value || '').trim();
+    const amount = Number(amountInput.value || 0);
+    if(!name) return;
+    if(tenantSettings.feeHeads.some(f=>f.name.toLowerCase()===name.toLowerCase())){ toast('That fee head already exists'); return; }
+    tenantSettings.feeHeads.push({ name, amount: amount>0 ? amount : 0 });
+    await persistTenantSettings();
+    nameInput.value=''; amountInput.value='0';
+    tsmRenderAcademic();
+    toast('Fee head added for this tenant');
+  });
+
+  // ---- Staff User Management (tenant-scoped) ----
+  function tsmRenderStaffPermChecklist(selected){
+    const box = document.getElementById('tsm_nu_permBox');
+    if(!box) return;
+    const tabs = licensedAssignableTabs(school);
+    if(!tabs.length){
+      box.innerHTML = `<p class="muted">No premium modules are licensed for this school yet — enable some in the Package Tier / Feature Toggles tabs first.</p>`;
+      return;
+    }
+    const sel = new Set(selected || []);
+    box.innerHTML = tabs.map(t => `
+      <label class="checkfee" style="border-bottom:none;">
+        <input type="checkbox" class="tsm-nu-perm" value="${t}" ${sel.has(t) ? 'checked' : ''}>
+        <span>${escapeHtml(TAB_LABELS[t] || t)}</span>
+      </label>`).join('');
+  }
+  function tsmResetStaffForm(){
+    tsmEditingStaffId = null;
+    document.getElementById('tsm_nu_name').value = '';
+    document.getElementById('tsm_nu_username').value = '';
+    document.getElementById('tsm_nu_email').value = '';
+    document.getElementById('tsm_nu_password').value = '';
+    document.getElementById('tsm_nu_password').placeholder = 'Password';
+    document.getElementById('tsm_nu_role').value = 'Manager';
+    document.getElementById('tsm_addUserBtn').textContent = 'Add User';
+    document.getElementById('tsm_cancelEditUserBtn').style.display = 'none';
+    tsmRenderStaffPermChecklist([]);
+  }
+  function tsmRenderStaffTable(){
+    const tbody = document.getElementById('tsm_manageUsersTable');
+    if(!tbody) return;
+    tsmRenderStaffPermChecklist(tsmEditingStaffId ? (tenantStaffUsers.find(u=>u.id===tsmEditingStaffId)||{}).permissions : []);
+    tbody.innerHTML = tenantStaffUsers.map(u=>`
+      <tr>
+        <td>${escapeHtml(u.name)}</td>
+        <td>${escapeHtml(u.username)}${u.email ? `<br><span class="muted" style="font-size:11px;">🔗 ${escapeHtml(u.email)}</span>` : ''}</td>
+        <td>${escapeHtml(u.role)}${(u.settings && u.settings.status==='inactive') ? ' <span class="dcc-status-badge" style="background:#fbe4e1;color:#b5443a;">Inactive</span>' : ''}</td>
+        <td>${(u.permissions||[]).map(t=>escapeHtml(TAB_LABELS[t]||t)).join(', ') || '<span class="muted">none</span>'}</td>
+        <td style="white-space:nowrap;">
+          <button class="btn small ghost tsm-edit-staff" type="button" data-id="${u.id}">Edit</button>
+          <button class="btn small danger tsm-remove-staff" type="button" data-id="${u.id}">Remove</button>
+        </td>
+      </tr>`).join('') || `<tr><td colspan="5"><p class="muted" style="margin:0;">No staff accounts yet for this tenant.</p></td></tr>`;
+
+    tbody.querySelectorAll('.tsm-edit-staff').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const u = tenantStaffUsers.find(x=>x.id===btn.dataset.id);
+        if(!u) return;
+        tsmEditingStaffId = u.id;
+        document.getElementById('tsm_nu_name').value = u.name;
+        document.getElementById('tsm_nu_username').value = u.username;
+        document.getElementById('tsm_nu_email').value = u.email || '';
+        document.getElementById('tsm_nu_password').value = '';
+        document.getElementById('tsm_nu_password').placeholder = 'Leave blank to keep current password';
+        document.getElementById('tsm_nu_role').value = u.role;
+        document.getElementById('tsm_addUserBtn').textContent = 'Save Changes';
+        document.getElementById('tsm_cancelEditUserBtn').style.display = '';
+        tsmRenderStaffPermChecklist(u.permissions);
+      });
+    });
+    tbody.querySelectorAll('.tsm-remove-staff').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const u = tenantStaffUsers.find(x=>x.id===btn.dataset.id);
+        if(!u) return;
+        if(!confirm(`Remove staff account "${u.name}"?`)) return;
+        tenantStaffUsers = tenantStaffUsers.filter(x=>x.id!==u.id);
+        await persistTenantStaff();
+        if(tsmEditingStaffId===u.id) tsmResetStaffForm();
+        tsmRenderStaffTable();
+        toast('Staff account removed');
+      });
+    });
+  }
+  tsmRenderStaffTable();
+  document.getElementById('tsm_addUserBtn').addEventListener('click', async ()=>{
+    const name = document.getElementById('tsm_nu_name').value.trim();
+    const username = document.getElementById('tsm_nu_username').value.trim();
+    const email = document.getElementById('tsm_nu_email').value.trim().toLowerCase();
+    const password = document.getElementById('tsm_nu_password').value;
+    const role = document.getElementById('tsm_nu_role').value;
+    const permissions = Array.from(document.querySelectorAll('.tsm-nu-perm:checked')).map(c=>c.value);
+
+    if(!name || !username || (!tsmEditingStaffId && !password)){ toast('Fill in all fields to save this user'); return; }
+    const usernameTaken = username.toLowerCase()===MASTER_USERNAME.toLowerCase()
+      || username.toLowerCase()===(school.ownerUsername||'').toLowerCase()
+      || tenantStaffUsers.some(u=>u.username.toLowerCase()===username.toLowerCase() && u.id!==tsmEditingStaffId);
+    if(usernameTaken){ toast('That username is already taken for this tenant'); return; }
+    if(email){
+      const emailTaken = email===(school.ownerEmail||'').toLowerCase()
+        || tenantStaffUsers.some(u=>(u.email||'').toLowerCase()===email && u.id!==tsmEditingStaffId);
+      if(emailTaken){ toast('That Google account email is already linked to another account'); return; }
+    }
+
+    if(tsmEditingStaffId){
+      const u = tenantStaffUsers.find(u=>u.id===tsmEditingStaffId);
+      if(u){
+        u.name = name; u.username = username; u.email = email; u.role = role; u.permissions = permissions;
+        if(password) u.password = await hashStaffPassword(password);
+      }
+      toast('Staff account updated');
+    } else {
+      tenantStaffUsers.push({ id: uid('u_'), username, email, password: await hashStaffPassword(password), name, role, permissions });
+      toast('Staff account created');
+    }
+    await persistTenantStaff();
+    tsmResetStaffForm();
+    tsmRenderStaffTable();
+  });
+  document.getElementById('tsm_cancelEditUserBtn').addEventListener('click', tsmResetStaffForm);
+
+  // ---- Backup & Restore (tenant-scoped export/import, never touches the
+  //      live session — reads/writes exclusively via scopedKeyFor(schoolId,·)) ----
+  document.getElementById('tsm_bk_exportBtn').addEventListener('click', async ()=>{
+    const btn = document.getElementById('tsm_bk_exportBtn');
+    const statusEl = document.getElementById('tsm_bk_exportStatus');
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    try{
+      const [tStudents, tVouchers, tExpenses, tStaff, tPayrollRuns] = await Promise.all([
+        lsRead(scopedKeyFor(schoolId, 'students'), []),
+        lsRead(scopedKeyFor(schoolId, 'vouchers'), []),
+        lsRead(scopedKeyFor(schoolId, 'expenses'), []),
+        lsRead(scopedKeyFor(schoolId, 'staff'), []),
+        lsRead(scopedKeyFor(schoolId, 'payrollRuns'), [])
+      ]);
+      const wb = XLSX.utils.book_new();
+
+      const studentRows = await chunkedMapRows(tStudents, s => ({
+        ID: s.id, AdmissionNo: s.admissionNo, Roll: s.roll, Name: s.name, Father: s.father,
+        Class: s.class, Section: s.section || '', Session: s.session, Phone: s.phone, DOB: s.dob, FormB: s.formb,
+        Status: s.status || 'Active', AdmissionDate: s.admissionDate, LeftDate: s.leftDate || '',
+        TuitionFee: s.tuitionFee != null ? s.tuitionFee : '',
+        AdmissionFee: s.admissionFee != null ? s.admissionFee : '',
+        AdmissionFeeCharged: s.admissionFeeCharged ? 'Yes' : 'No',
+        CustomFeesJSON: JSON.stringify(s.customFees || {})
+      }), (done,total)=>{ btn.textContent = `Students: ${done}/${total}`; });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(studentRows), 'Students');
+
+      const studentById = new Map(tStudents.map(s=>[s.id, s]));
+      const feeRows = await chunkedMapRows(tVouchers, v => {
+        const student = studentById.get(v.studentId);
+        return {
+          ID: v.id, StudentID: v.studentId, StudentName: student ? student.name : '',
+          Month: v.month, Total: v.total, Paid: v.paid,
+          Balance: (v.balance != null ? v.balance : v.total - v.paid),
+          Status: v.status, Date: v.date, ItemsJSON: JSON.stringify(v.items || [])
+        };
+      }, (done,total)=>{ btn.textContent = `Fees history: ${done}/${total}`; });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(feeRows), 'FeesHistory');
+
+      const expenseRows = tExpenses.map(x => ({ ID: x.id, Date: x.date, Category: x.category, Title: x.title, Amount: x.amount }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(expenseRows), 'Expenses');
+
+      const payrollRows = tStaff.map(m => ({ ID: m.id, Name: m.name, Designation: m.designation, Joining: m.joining, Basic: m.basic, Phone: m.phone }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(payrollRows), 'StaffPayroll');
+
+      const payrollRunRows = tPayrollRuns.map(r => {
+        const m = tStaff.find(x=>x.id===r.staffId);
+        return {
+          ID: r.id, StaffID: r.staffId, StaffName: m ? m.name : '', Month: r.month,
+          Basic: r.basic, Allowances: r.allowances, Deductions: r.deductions, Net: r.net,
+          ExpenseID: r.expenseId, PaidOn: r.paidOn
+        };
+      });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(payrollRunRows), 'PayrollRuns');
+
+      const loginRows = tenantStaffUsers.map(u => ({
+        ID: u.id, Username: u.username, Password: u.password, Name: u.name,
+        Role: u.role, PermissionsJSON: JSON.stringify(u.permissions || [])
+      }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(loginRows), 'StaffLogins');
+
+      const settingsRows = [{
+        ClassesJSON: JSON.stringify(tenantSettings.classes || []),
+        FeeHeadsJSON: JSON.stringify(tenantSettings.feeHeads || []),
+        SchoolJSON: JSON.stringify(tenantSettings.school || {}),
+        Theme: tenantSettings.theme || 'navy'
+      }];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(settingsRows), 'Settings');
+
+      const schoolLabel = (tenantSettings.school && tenantSettings.school.name) || school.name || 'school';
+      const fileName = `${schoolLabel.replace(/[^a-z0-9]+/gi,'_')}_backup_${new Date().toISOString().slice(0,10)}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      statusEl.textContent = `Exported ${tStudents.length} student(s), ${tVouchers.length} fee record(s), ${tExpenses.length} expense(s), ${tStaff.length} staff record(s).`;
+    }catch(err){
+      console.error('Tenant export failed:', err);
+      toast('Export failed — see console for details');
+    }finally{
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  });
+
+  document.getElementById('tsm_bk_importTrigger').addEventListener('click', ()=>{
+    document.getElementById('tsm_bk_importFile').click();
+  });
+  document.getElementById('tsm_bk_importFile').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev)=>{
+      let wb;
+      try{
+        wb = XLSX.read(new Uint8Array(ev.target.result), { type:'array' });
+      }catch(err){
+        toast('Could not read this file — make sure it is a valid .xlsx/.csv backup');
+        e.target.value = '';
+        return;
+      }
+      const result = parseBackupWorkbook(wb);
+      if(!result.valid){
+        toast('Invalid backup file — see details');
+        alert('This backup could not be imported:\n\n' + result.error);
+        e.target.value = '';
+        return;
+      }
+      const summary = `${result.students.length} student(s), ${result.vouchers.length} fee record(s), `
+        + `${result.expenses.length} expense(s), ${result.staff.length} staff record(s), `
+        + `${result.payrollRuns.length} processed payroll payment(s) and ${result.appUsers.length} staff login(s)`;
+      if(!confirm(`This backup contains ${summary}. Restoring will overwrite ${school.name}'s current data — Profile & licensing configuration is untouched. Continue?`)){
+        e.target.value = '';
+        return;
+      }
+      try{
+        await lsWrite(scopedKeyFor(schoolId, 'students'), result.students);
+        await lsWrite(scopedKeyFor(schoolId, 'vouchers'), result.vouchers);
+        await lsWrite(scopedKeyFor(schoolId, 'expenses'), result.expenses);
+        await lsWrite(scopedKeyFor(schoolId, 'staff'), result.staff);
+        await lsWrite(scopedKeyFor(schoolId, 'payrollRuns'), result.payrollRuns);
+        if(result.appUsers.length){
+          tenantStaffUsers = result.appUsers;
+          await persistTenantStaff();
+          tsmRenderStaffTable();
+        }
+        if(result.settings){
+          Object.assign(tenantSettings, result.settings);
+          await persistTenantSettings();
+          tsmRenderAcademic();
+        }
+        toast(`Database restored successfully for ${school.name}`);
+      }catch(err){
+        console.error('Tenant restore failed:', err);
+        toast('Restore failed — see console for details');
+      }
+      e.target.value = '';
+    };
+    reader.onerror = ()=> toast('Could not read this file');
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/* ---- Tenant "Reset Password" modal ---------------------------------
+   Sets a brand new Super Admin password for exactly one tenant. This
+   console never accepts a Super Admin login itself (see loginForm's
+   comment above) — this only updates the credential record the
+   client-facing app validates against. */
+function openTenantPasswordResetModal(schoolId){
+  const school = schools.find(s => s.id === schoolId);
+  if(!school){ toast('School not found'); return; }
+  document.getElementById('printArea').innerHTML = `
+    <div style="padding:22px 24px;">
+      <span class="close-x" onclick="closeModal()">&times;</span>
+      <h2 style="margin:0 0 4px;color:var(--navy-2);">🔑 Reset Password — ${escapeHtml(school.name)}</h2>
+      <p class="muted" style="margin:0 0 16px;">Sets a new Super Admin password for this tenant only. Share it with the school owner directly — this does not notify them automatically.</p>
+      <label>Super Admin Username</label>
+      <input type="text" value="${escapeHtml(school.ownerUsername)}" disabled>
+      <label style="margin-top:12px;">New Password</label>
+      <input type="password" id="tprm_newPassword" placeholder="Enter a new password" autocomplete="off">
+      <button class="btn gold" id="tprm_saveBtn" type="button" style="margin-top:14px;">Save New Password</button>
+    </div>`;
+  document.getElementById('tprm_saveBtn').addEventListener('click', async ()=>{
+    const pw = document.getElementById('tprm_newPassword').value;
+    if(!pw || pw.length < 4){ toast('Enter a password (minimum 4 characters)'); return; }
+    school.ownerPassword = pw;
+    await saveGlobal('erp_schools', schools);
+    toast(`Password reset for ${escapeHtml(school.name)}`);
+    closeModal();
+  });
+  openModal(false, false, undefined, true);
 }
 
 /* Phase 1: writes this tenant's package + module flags (and any pending
@@ -4163,14 +5762,14 @@ async function openRemoteControlModal(schoolId){
   if(!school){ toast('School not found'); return; }
 
   document.getElementById('printArea').innerHTML = `
-    <div style="padding:22px 24px;max-height:78vh;overflow-y:auto;">
+    <div class="admin-fullscreen-scroll" style="padding:22px 24px;">
       <span class="close-x" onclick="closeModal()">&times;</span>
       <h2 style="margin:0 0 4px;color:var(--navy-2);">🎛 Remote Control — ${escapeHtml(school.name)}</h2>
       <p class="muted" style="margin:0 0 16px;">Live controls for this installation. Changes apply on any device this school is signed into, next time it's online.</p>
       <p class="muted" id="rc_loading">Loading current state...</p>
       <div id="rc_body" style="display:none;"></div>
     </div>`;
-  openModal(false, true);
+  openModal(false, true, undefined, true, true);
 
   const ready = await ensureFirebaseReady();
   if(!ready || !firebaseDb){
@@ -4351,8 +5950,12 @@ function renderGlobalFeatureFlags(){
 }
 
 async function renderDevControl(){
-  const tbody = document.getElementById('devSchoolsTable');
-  if(!tbody) return;
+  // Guard on the Command Center shell itself rather than the old
+  // cross-tenant Module Licensing Matrix table — that table (and the
+  // Provision New Tenant form) were relocated into per-tenant modals
+  // (see openTenantSettingsModal() / openProvisionTenantModal()), so
+  // #devSchoolsTable no longer exists in the DOM at all.
+  if(!document.getElementById('devOverviewGrid')) return;
   renderCloudConfigPanel();
   renderGlobalFeatureFlags();
 
@@ -4366,85 +5969,15 @@ async function renderDevControl(){
     activeCounts[s.id] = n;
     totalActive += n;
   }
+  schools.forEach(ensureSchoolModuleConfig); // Phase 1 — backfills package/moduleFlags for older records
   renderDevOverviewGrid(schools.length, totalActive);
   renderDevSchoolCards(activeCounts);
-
-  tbody.innerHTML = schools.map(s => {
-    ensureSchoolModuleConfig(s); // Phase 1 — backfills package/moduleFlags for older records
-    const pendingReqs = (s.upgradeRequests||[]).filter(r=>r.status==='pending');
-    return `
-    <tr>
-      <td>
-        <b>${escapeHtml(s.name)}</b><br>
-        <span class="muted">Owner: ${escapeHtml(s.ownerUsername)}</span><br>
-        <span class="muted">Created: ${new Date(s.createdAt).toLocaleDateString()}</span><br>
-        <span class="muted">🧑‍🎓 Active Students: <b>${activeCounts[s.id] ?? 0}</b></span>
-      </td>
-      <td>
-        ${FEATURE_DEFS.map(f => `
-          <label class="checkfee" style="border-bottom:none;">
-            <input type="checkbox" class="dev-feature" data-school="${s.id}" data-feature="${f.key}" ${s.features[f.key] ? 'checked' : ''}>
-            <span>${escapeHtml(f.label)}</span>
-          </label>`).join('')}
-      </td>
-      <td>
-        <select class="dev-edit-package" data-school="${s.id}" style="margin-bottom:6px;">
-          ${Object.keys(PACKAGES).map(p => `<option value="${p}" ${s.package===p?'selected':''}>${p}</option>`).join('')}
-        </select>
-        ${MODULE_DEFS.map(m => `
-          <label class="checkfee" style="border-bottom:none;">
-            <input type="checkbox" class="dev-edit-module" data-school="${s.id}" data-module="${m.key}" ${s.moduleFlags[m.key] ? 'checked' : ''}>
-            <span>${escapeHtml(m.label)}</span>
-          </label>`).join('')}
-        ${pendingReqs.length ? `
-          <div style="margin-top:8px;padding:6px 8px;background:#fff8e1;border:1px solid var(--gold);border-radius:6px;font-size:11.5px;">
-            <b>📩 ${pendingReqs.length} pending request(s):</b><br>
-            ${pendingReqs.map(r => `
-              ${escapeHtml(r.label)} — <button class="btn small gold" style="padding:1px 6px;font-size:10px;" onclick="approveUpgradeRequest('${s.id}','${r.module}')">Approve</button>
-              <button class="btn small ghost" style="padding:1px 6px;font-size:10px;" onclick="dismissUpgradeRequest('${s.id}','${r.module}')">Dismiss</button><br>`).join('')}
-          </div>` : ''}
-      </td>
-      <td style="vertical-align:top;">
-        <button class="btn small secondary" onclick="openSchoolSettingsAsDev('${s.id}')">🔍 Quick Inspect / Manage</button>
-        <button class="btn small danger" onclick="deleteSchool('${s.id}')">Delete School</button>
-      </td>
-    </tr>`;
-  }).join('') || `<tr><td colspan="4" class="muted">No client schools provisioned yet — create one above.</td></tr>`;
-
-  document.querySelectorAll('.dev-feature').forEach(cb=>{
-    cb.addEventListener('change', async ()=>{
-      const school = schools.find(s=>s.id===cb.dataset.school);
-      if(!school) return;
-      school.features[cb.dataset.feature] = cb.checked;
-      await saveGlobal('erp_schools', schools);
-      toast(`${escapeHtml(school.name)}: ${FEATURE_DEFS.find(f=>f.key===cb.dataset.feature).label} ${cb.checked ? 'enabled' : 'disabled'}`);
-    });
-  });
-
-  // Phase 1: package preset + individual module editing for existing schools
-  document.querySelectorAll('.dev-edit-package').forEach(sel => {
-    sel.addEventListener('change', async () => {
-      const school = schools.find(s => s.id === sel.dataset.school);
-      if(!school) return;
-      school.package = sel.value;
-      const preset = PACKAGES[sel.value];
-      if(preset) school.moduleFlags = Object.assign({}, preset); // Custom leaves existing flags alone
-      await saveGlobal('erp_schools', schools);
-      await saveSchoolModuleConfigToFirestore(school);
-      renderDevControl();
-      toast(`${escapeHtml(school.name)}: package set to ${sel.value}`);
-    });
-  });
-  document.querySelectorAll('.dev-edit-module').forEach(cb => {
-    cb.addEventListener('change', async () => {
-      const school = schools.find(s => s.id === cb.dataset.school);
-      if(!school) return;
-      school.moduleFlags[cb.dataset.module] = cb.checked;
-      await saveGlobal('erp_schools', schools);
-      await saveSchoolModuleConfigToFirestore(school);
-      toast(`${escapeHtml(school.name)}: ${MODULE_DEFS.find(m=>m.key===cb.dataset.module).label} ${cb.checked ? 'enabled' : 'disabled'}`);
-    });
-  });
+  if(document.getElementById('devReqBadge')) renderDevFeatureRequestsTab();
+  // NOTE: the cross-tenant Module Licensing Matrix table (#devSchoolsTable)
+  // and its .dev-feature/.dev-edit-package/.dev-edit-module editing
+  // controls have been relocated into the per-tenant Settings &
+  // Configuration modal — see openTenantSettingsModal(). `tbody` above is
+  // always null now; nothing else in this function depends on it.
 }
 
 /* Phase 3: Approve/Dismiss handlers for upgrade requests raised from the
@@ -4549,68 +6082,151 @@ function closeDevSchoolSettings(){
 document.getElementById('devSettingsReturnBtn').addEventListener('click', closeDevSchoolSettings);
 document.getElementById('devFloatReturnBtn').addEventListener('click', closeDevSchoolSettings);
 
-/* Phase 1: renders the module checkbox block in the "Provision New
-   School" form. Called with a package preset (auto-fill) or with no
-   argument to reset to all-off. */
-function renderNewSchoolModuleBox(presetFlags){
-  const box = document.getElementById('dev_newSchoolModuleBox');
-  if(!box) return;
-  const flags = presetFlags || defaultModuleFlags();
+/* ============================================================
+   FEATURE MATRIX TAB (Command Center): lets the Developer edit
+   which add-on modules each pricing tier (Basic/Standard/Premium)
+   includes, instead of those bundles being hardcoded only. Custom
+   tier is intentionally excluded — it always means "set manually".
+   Saved tier overrides persist in this browser and are merged over
+   the built-in PACKAGES bundles on load. ============================ */
+(function(){
+  try{
+    const saved = JSON.parse(localStorage.getItem('erp_packageTiers') || '{}');
+    Object.keys(saved).forEach(tier=>{
+      if(PACKAGES[tier]) PACKAGES[tier] = Object.assign({}, PACKAGES[tier], saved[tier]);
+    });
+  }catch(e){ /* ignore malformed saved presets */ }
+})();
+let matrixSelectedTier = 'Standard';
+function renderFeatureMatrixTab(){
+  const tabsBox = document.getElementById('matrixTierTabs');
+  const box = document.getElementById('matrixTierBox');
+  if(!tabsBox || !box) return;
+  const tiers = Object.keys(PACKAGES).filter(k => PACKAGES[k]); // exclude Custom (null)
+  if(!tiers.includes(matrixSelectedTier)) matrixSelectedTier = tiers[0];
+  tabsBox.innerHTML = tiers.map(t => `<button type="button" class="btn small ${t===matrixSelectedTier?'gold':'ghost'}" data-tier="${t}" style="margin-top:0;">${escapeHtml(t)}</button>`).join('');
+  tabsBox.querySelectorAll('[data-tier]').forEach(b=>{
+    b.addEventListener('click', ()=>{ matrixSelectedTier = b.dataset.tier; renderFeatureMatrixTab(); });
+  });
+  const flags = PACKAGES[matrixSelectedTier] || {};
   box.innerHTML = MODULE_DEFS.map(m => `
     <label class="checkfee">
-      <input type="checkbox" class="dev-new-module" data-module="${m.key}" ${flags[m.key] ? 'checked' : ''}>
+      <input type="checkbox" class="matrix-tier-module" data-module="${m.key}" ${flags[m.key] ? 'checked' : ''}>
       <span>${escapeHtml(m.label)}</span>
     </label>`).join('');
+  const status = document.getElementById('matrixTierStatus');
+  if(status) status.textContent = '';
 }
-renderNewSchoolModuleBox();
-
-document.getElementById('dev_schoolPackage').addEventListener('change', (e) => {
-  const preset = PACKAGES[e.target.value];
-  if(preset) renderNewSchoolModuleBox(preset); // Custom leaves current checks untouched
+document.getElementById('matrixTierSaveBtn').addEventListener('click', ()=>{
+  const flags = {};
+  document.querySelectorAll('.matrix-tier-module').forEach(cb => { flags[cb.dataset.module] = cb.checked; });
+  PACKAGES[matrixSelectedTier] = flags;
+  try{
+    const saved = JSON.parse(localStorage.getItem('erp_packageTiers') || '{}');
+    saved[matrixSelectedTier] = flags;
+    localStorage.setItem('erp_packageTiers', JSON.stringify(saved));
+  }catch(e){ /* ignore storage errors */ }
+  const status = document.getElementById('matrixTierStatus');
+  if(status) status.textContent = `Saved — newly provisioned "${matrixSelectedTier}" schools will use these modules.`;
+  toast(`${matrixSelectedTier} tier updated`);
 });
 
-document.getElementById('devCreateSchoolBtn').addEventListener('click', async ()=>{
-  const name = document.getElementById('dev_schoolName').value.trim();
-  const ownerUsername = document.getElementById('dev_ownerUsername').value.trim();
-  const ownerPassword = document.getElementById('dev_ownerPassword').value;
-  const ownerEmail = document.getElementById('dev_ownerEmail').value.trim().toLowerCase();
-  const pkg = document.getElementById('dev_schoolPackage').value; // Phase 1
-  if(!name || !ownerUsername || !ownerPassword){ toast('Fill in all fields to provision a school'); return; }
-  const taken = ownerUsername.toLowerCase()===MASTER_USERNAME.toLowerCase()
-    || schools.some(s=>s.ownerUsername.toLowerCase()===ownerUsername.toLowerCase());
-  if(taken){ toast('That Super Admin username is already taken'); return; }
-  if(ownerEmail && schools.some(s=>(s.ownerEmail||'').toLowerCase()===ownerEmail)){
-    toast('That Google account email is already linked to another school'); return;
-  }
+/* Phase 1 (relocated): "Provision New Tenant" used to be a permanently
+   visible inline form on the Tenants & Users tab; it now lives in its
+   own modal opened from the "🛠 Provision New Tenant" button, so the
+   tenant list stays clean. Builds its HTML and (re)binds every listener
+   fresh on each open — same self-contained pattern as
+   openDevQuickSettings()/openRemoteControlModal() below. */
+function openProvisionTenantModal(){
+  document.getElementById('printArea').innerHTML = `
+    <div class="admin-fullscreen-scroll" style="padding:22px 24px;">
+      <span class="close-x" onclick="closeModal()">&times;</span>
+      <h2 style="margin:0 0 4px;color:var(--navy-2);">🛠 Provision New Tenant</h2>
+      <p class="muted" style="margin:0 0 16px;">Create a new client school and hand its Super Admin credentials to the school owner. This account is completely separate from your own developer login.</p>
+      <div class="row">
+        <div><input type="text" id="dev_schoolName" placeholder="School / Academy name"></div>
+      </div>
+      <div class="row">
+        <div><input type="text" id="dev_ownerUsername" placeholder="Super Admin username"></div>
+        <div><input type="password" id="dev_ownerPassword" placeholder="Secure password"></div>
+      </div>
+      <div class="row">
+        <div><input type="email" id="dev_ownerEmail" placeholder="Owner's Google account email (for Sign in with Google) — optional"></div>
+      </div>
+      <div class="row">
+        <div>
+          <label style="font-size:13px;font-weight:600;color:var(--navy-2);">Feature Package</label>
+          <select id="dev_schoolPackage">
+            <option value="Basic">Basic</option>
+            <option value="Standard">Standard</option>
+            <option value="Premium">Premium</option>
+            <option value="Custom">Custom</option>
+          </select>
+        </div>
+      </div>
+      <p class="muted" style="margin:2px 0 6px;font-size:12px;">Basic / Standard / Premium auto-fill the checkboxes below. Custom leaves them for you to set individually.</p>
+      <div id="dev_newSchoolModuleBox" style="margin:0 0 4px;"></div>
+      <button class="btn gold" id="devCreateSchoolBtn" style="margin-top:14px;" type="button">+ Provision New School</button>
+    </div>`;
 
-  // Phase 1: read module checkboxes as entered/auto-filled by the package preset
-  const moduleFlags = {};
-  document.querySelectorAll('.dev-new-module').forEach(cb => {
-    moduleFlags[cb.dataset.module] = cb.checked;
+  function renderModuleBox(presetFlags){
+    const box = document.getElementById('dev_newSchoolModuleBox');
+    if(!box) return;
+    const flags = presetFlags || defaultModuleFlags();
+    box.innerHTML = MODULE_DEFS.map(m => `
+      <label class="checkfee">
+        <input type="checkbox" class="dev-new-module" data-module="${m.key}" ${flags[m.key] ? 'checked' : ''}>
+        <span>${escapeHtml(m.label)}</span>
+      </label>`).join('');
+  }
+  renderModuleBox();
+
+  document.getElementById('dev_schoolPackage').addEventListener('change', (e) => {
+    const preset = PACKAGES[e.target.value];
+    if(preset) renderModuleBox(preset); // Custom leaves current checks untouched
   });
 
-  const newSchool = {
-    id: uid('sch_'),
-    name, ownerUsername, ownerPassword, ownerEmail,
-    features: effectiveGlobalFeatureDefaults(),
-    package: pkg,               // Phase 1
-    moduleFlags,                 // Phase 1
-    upgradeRequests: [],         // Phase 3
-    createdAt: new Date().toISOString()
-  };
-  schools.push(newSchool);
-  await saveGlobal('erp_schools', schools);
-  await saveSchoolModuleConfigToFirestore(newSchool); // Phase 1
+  document.getElementById('devCreateSchoolBtn').addEventListener('click', async ()=>{
+    const name = document.getElementById('dev_schoolName').value.trim();
+    const ownerUsername = document.getElementById('dev_ownerUsername').value.trim();
+    const ownerPassword = document.getElementById('dev_ownerPassword').value;
+    const ownerEmail = document.getElementById('dev_ownerEmail').value.trim().toLowerCase();
+    const pkg = document.getElementById('dev_schoolPackage').value; // Phase 1
+    if(!name || !ownerUsername || !ownerPassword){ toast('Fill in all fields to provision a school'); return; }
+    const taken = ownerUsername.toLowerCase()===MASTER_USERNAME.toLowerCase()
+      || schools.some(s=>s.ownerUsername.toLowerCase()===ownerUsername.toLowerCase());
+    if(taken){ toast('That Super Admin username is already taken'); return; }
+    if(ownerEmail && schools.some(s=>(s.ownerEmail||'').toLowerCase()===ownerEmail)){
+      toast('That Google account email is already linked to another school'); return;
+    }
 
-  document.getElementById('dev_schoolName').value = '';
-  document.getElementById('dev_ownerUsername').value = '';
-  document.getElementById('dev_ownerPassword').value = '';
-  document.getElementById('dev_ownerEmail').value = '';
-  document.getElementById('dev_schoolPackage').value = 'Basic'; // Phase 1
-  renderNewSchoolModuleBox(); // Phase 1 — reset checkboxes to Basic (all off)
-  renderDevControl();
-  toast('School provisioned — Super Admin can now log in');
-});
+    // Phase 1: read module checkboxes as entered/auto-filled by the package preset
+    const moduleFlags = {};
+    document.querySelectorAll('.dev-new-module').forEach(cb => {
+      moduleFlags[cb.dataset.module] = cb.checked;
+    });
+
+    const newSchool = {
+      id: uid('sch_'),
+      name, ownerUsername, ownerPassword, ownerEmail,
+      features: effectiveGlobalFeatureDefaults(),
+      package: pkg,               // Phase 1
+      moduleFlags,                 // Phase 1
+      upgradeRequests: [],         // Phase 3
+      createdAt: new Date().toISOString()
+    };
+    schools.push(newSchool);
+    await saveGlobal('erp_schools', schools);
+    await saveSchoolModuleConfigToFirestore(newSchool); // Phase 1
+
+    closeModal();
+    renderDevControl();
+    toast('School provisioned — Super Admin can now log in');
+  });
+
+  openModal(false, true, undefined, true, true);
+}
+document.getElementById('devOpenProvisionBtn').addEventListener('click', openProvisionTenantModal);
 
 async function deleteSchool(id){
   const school = schools.find(s=>s.id===id);
@@ -8236,13 +9852,27 @@ function applyPrintFormat(fmt){
   const dl = document.getElementById('downloadImgBtn');
   if(dl) dl.style.display = fmt==='bulk' ? 'none' : '';
 }
-function openModal(showWA, wide, fmt){
-  document.getElementById('modalBg').classList.add('show');
+function openModal(showWA, wide, fmt, hidePrint, fullscreen){
+  const bg = document.getElementById('modalBg');
+  bg.classList.add('show');
+  bg.classList.toggle('admin-fullscreen-active', !!fullscreen);
   document.getElementById('waSendBtn').style.display = showWA ? 'inline-flex' : 'none';
-  document.querySelector('#modalBg .modal-box').classList.toggle('wide', !!wide);
+  const box = document.querySelector('#modalBg .modal-box');
+  box.classList.toggle('wide', !!wide);
+  // Internal admin actions (Settings & Configuration / Provision New
+  // Tenant / Remote Control / Reset Password, etc.) never need the
+  // print/export controls that every real printable document below
+  // still uses — those stay exactly as they were for everything else.
+  // Only the larger "workspace" modals also go full-screen.
+  box.classList.toggle('admin-fullscreen', !!fullscreen);
+  const printControls = document.getElementById('modalPrintControls');
+  if(printControls) printControls.style.display = hidePrint ? 'none' : '';
   applyPrintFormat(fmt || 'a4'); // every newly opened document starts on the safe A4 default unless told otherwise
 }
-function closeModal(){ document.getElementById('modalBg').classList.remove('show'); }
+function closeModal(){
+  document.getElementById('modalBg').classList.remove('show', 'admin-fullscreen-active');
+  document.querySelector('#modalBg .modal-box').classList.remove('admin-fullscreen');
+}
 document.getElementById('modalBg').addEventListener('click', e=>{
   if(e.target.id==='modalBg') closeModal();
 });
@@ -12526,6 +14156,98 @@ function v2Activate(){document.querySelectorAll('.v2-tab-ignore').forEach(x=>x.r
 function v2Init(){const b=document.querySelector('.tab-btn[data-tab="v2hub"]');if(!b)return;b.addEventListener('click',v2Activate);document.getElementById('v2ttClass')?.addEventListener('change',v2RenderTimetable);document.getElementById('v2ttDay')?.addEventListener('change',v2RenderTimetable);document.getElementById('v2MsgStudent')?.addEventListener('change',v2BuildMessage);v2Load();}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',v2Init);else v2Init();
 setInterval(()=>{const b=document.querySelector('.tab-btn[data-tab="v2hub"]');if(b&&typeof currentUser!=='undefined'&&currentUser){b.style.display=(currentUser.role==='AnjumWebsDeveloper'||currentUser.role==='Super Admin')?'':'none';}},1000);
+})();
+</script>
+
+<script>
+/* ============================================================
+   SIDEBAR UPGRADE: accordion nav groups + desktop collapse rail
+   Purely additive — does not touch tab switching, RBAC masking,
+   or the mobile drawer logic defined earlier; it only manages the
+   new .nav-group / .sidebar-collapse-btn elements added above.
+   ============================================================ */
+(function(){
+  'use strict';
+
+  /* ---- Accordion groups: click a group header to expand/collapse it ---- */
+  document.querySelectorAll('.nav-group-header').forEach(header=>{
+    header.addEventListener('click', ()=>{
+      const group = header.closest('.nav-group');
+      if(!group) return;
+      const sidebarEl = document.getElementById('sidebar');
+      // Icon-only desktop rail: header clicks briefly expand the sidebar
+      // itself instead of toggling the group, since group labels are
+      // hidden in that state.
+      if(sidebarEl && sidebarEl.classList.contains('collapsed') && window.innerWidth>900){
+        return;
+      }
+      group.classList.toggle('open');
+    });
+  });
+
+  /* ---- Keep whichever group holds the active tab expanded, whether the
+     tab was activated by a user click or by existing app logic
+     (RBAC redirects, v2Activate, certificate hub, etc). ---- */
+  function openGroupFor(btn){
+    const group = btn && btn.closest && btn.closest('.nav-group');
+    if(group) group.classList.add('open');
+  }
+  document.querySelectorAll('.sidebar-nav .tab-btn').forEach(btn=>{
+    if(btn.classList.contains('active')) openGroupFor(btn);
+    btn.addEventListener('click', ()=>openGroupFor(btn));
+  });
+  const navObserver = new MutationObserver(mutations=>{
+    mutations.forEach(m=>{
+      if(m.type==='attributes' && m.attributeName==='class' && m.target.classList && m.target.classList.contains('tab-btn') && m.target.classList.contains('active')){
+        openGroupFor(m.target);
+      }
+    });
+  });
+  document.querySelectorAll('.sidebar-nav .tab-btn').forEach(btn=>{
+    navObserver.observe(btn, {attributes:true, attributeFilter:['class']});
+  });
+
+  /* ---- Hide a group entirely once RBAC has hidden every tab inside it
+     (existing code sets btn.style.display='none' per-button; this just
+     keeps the now-empty group header from showing). ---- */
+  function syncGroupVisibility(group){
+    const anyVisible = Array.from(group.querySelectorAll('.tab-btn')).some(b=>b.style.display!=='none');
+    group.style.display = anyVisible ? '' : 'none';
+  }
+  const groups = Array.from(document.querySelectorAll('.nav-group'));
+  const visObserver = new MutationObserver(mutations=>{
+    mutations.forEach(m=>{
+      if(m.type==='attributes' && m.attributeName==='style'){
+        const group = m.target.closest && m.target.closest('.nav-group');
+        if(group) syncGroupVisibility(group);
+      }
+    });
+  });
+  document.querySelectorAll('.sidebar-nav .tab-btn').forEach(btn=>{
+    visObserver.observe(btn, {attributes:true, attributeFilter:['style']});
+  });
+  groups.forEach(syncGroupVisibility);
+
+  /* ---- Desktop collapse toggle (icon-only rail), preference remembered ---- */
+  const collapseBtn = document.getElementById('sidebarCollapseBtn');
+  const sidebarEl = document.getElementById('sidebar');
+  function setCollapsed(on){
+    if(!sidebarEl) return;
+    sidebarEl.classList.toggle('collapsed', on);
+    if(collapseBtn){
+      collapseBtn.title = on ? 'Expand sidebar' : 'Collapse sidebar';
+      collapseBtn.setAttribute('aria-label', collapseBtn.title);
+    }
+    try{ localStorage.setItem('ui_sidebarCollapsed', on ? '1' : '0'); }catch(e){}
+  }
+  if(collapseBtn){
+    collapseBtn.addEventListener('click', ()=>{
+      setCollapsed(!sidebarEl.classList.contains('collapsed'));
+    });
+  }
+  try{
+    if(localStorage.getItem('ui_sidebarCollapsed')==='1' && window.innerWidth>900) setCollapsed(true);
+  }catch(e){}
 })();
 </script>
 </body>
