@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Al-Noor School ERP</title>
+<title>Anjum Webs Development</title>
 
 <!-- ================= PWA / Offline Shell Metadata =================
      Single-file packaging: the manifest is embedded as a base64 data URI
@@ -272,6 +272,9 @@ var PWA_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192
   .pill{padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;}
   .pill.paid{background:#e2f3e6;color:#217a3c;}
   .pill.due{background:#fbe7e5;color:var(--danger);}
+  .pill.ok{background:#e2f3e6;color:#217a3c;}
+  .pill.warn{background:#fbf1de;color:#9a6a14;}
+  .pill.danger{background:#fbe7e5;color:var(--danger);}
   .muted{color:var(--muted);font-size:12.5px;}
   .toast{
     position:fixed;bottom:22px;right:22px;background:var(--navy-2);color:#fff;padding:12px 18px;border-radius:8px;
@@ -880,7 +883,10 @@ var PWA_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192
     --dcc-text-muted:#7a869e; --dcc-accent:#e7b768; --dcc-hover:#17a190;
   }
   #panel-devcontrol.dcc-compact{
-    display:flex;flex-direction:column;gap:0;
+    display:none;flex-direction:column;gap:0;
+  }
+  #panel-devcontrol.dcc-compact.active{
+    display:flex;
   }
   /* ---- Command Center top bar: now just a slim strip with a hamburger
      trigger + current-section label + theme toggle. The actual section
@@ -2273,8 +2279,9 @@ html[dir="rtl"] .combo-list{text-align:right;}
     <div class="dcc-scroll">
       <div class="dcc-two-col">
         <div class="card">
-          <h2>🔑 Generate License Key</h2>
-          <p class="muted">Builds a signed, encrypted license key (via <code>ERPLicenseEngine</code>) for a client school's renewal / activation screen. The signing passphrase is set in <b>Global Config</b> and must match what your client installs validate against.</p>
+          <h2 id="devlk_formTitle">🔑 Generate License Key</h2>
+          <p class="muted">Builds a signed, encrypted license key (via <code>ERPLicenseEngine</code>) for a client school's activation gate. The signing passphrase is set below and must match what your client installs validate against.</p>
+          <p class="muted" id="devlk_renewBanner" style="display:none;background:var(--dcc-bg-soft,#2a2f3d);border:1px solid var(--gold);border-radius:8px;padding:8px 10px;color:var(--gold);"></p>
           <div class="row">
             <div>
               <label style="font-size:13px;font-weight:600;color:var(--dcc-text-dim);">Client School</label>
@@ -2283,32 +2290,83 @@ html[dir="rtl"] .combo-list{text-align:right;}
           </div>
           <div class="row">
             <div>
-              <label style="font-size:13px;font-weight:600;color:var(--dcc-text-dim);">Expiry Date</label>
+              <label style="font-size:13px;font-weight:600;color:var(--dcc-text-dim);">Duration</label>
+              <select id="devlk_duration">
+                <option value="trial7">Trial — 7 Days</option>
+                <option value="trial14">Trial — 14 Days</option>
+                <option value="monthly">Monthly — 30 Days</option>
+                <option value="yearly" selected>Yearly — 365 Days</option>
+                <option value="lifetime">Lifetime — No Expiry</option>
+                <option value="custom">Custom Date…</option>
+              </select>
+            </div>
+            <div id="devlk_customExpiryWrap" style="display:none;">
+              <label style="font-size:13px;font-weight:600;color:var(--dcc-text-dim);">Custom Expiry Date</label>
               <input type="date" id="devlk_expiry">
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label style="font-size:13px;font-weight:600;color:var(--dcc-text-dim);">Package Tier</label>
+              <select id="devlk_tier">
+                <option value="Basic">Basic</option>
+                <option value="Standard" selected>Standard</option>
+                <option value="Premium">Premium</option>
+                <option value="Custom">Custom…</option>
+              </select>
+            </div>
+            <div id="devlk_customTierWrap" style="display:none;">
+              <label style="font-size:13px;font-weight:600;color:var(--dcc-text-dim);">Custom Tier Name</label>
+              <input type="text" id="devlk_customTier" placeholder="e.g. Enterprise">
             </div>
             <div>
               <label style="font-size:13px;font-weight:600;color:var(--dcc-text-dim);">Device Limit</label>
               <input type="number" id="devlk_deviceLimit" min="1" value="1">
             </div>
           </div>
-          <button class="btn gold" id="devlk_generateBtn" style="margin-top:14px;">🔑 Generate License Key</button>
+          <div style="display:flex;gap:10px;margin-top:14px;">
+            <button class="btn gold" id="devlk_generateBtn">🔑 Generate License Key</button>
+            <button class="btn secondary" id="devlk_cancelRenewBtn" type="button" style="display:none;">Cancel</button>
+          </div>
           <p class="muted" id="devlk_status" style="margin-top:8px;"></p>
-          <div id="devlk_outputWrap" style="display:none;margin-top:10px;">
-            <label style="font-size:13px;font-weight:600;color:var(--dcc-text-dim);">Generated Key</label>
-            <textarea class="dcc-lk-output" id="devlk_output" readonly></textarea>
-            <button class="btn secondary small" id="devlk_copyBtn" style="margin-top:8px;" type="button">📋 Copy Key</button>
+          <div id="devlk_outputWrap" style="display:none;margin-top:14px;">
+            <div style="background:#e2f3e6;border:1px solid #b7ddc3;border-radius:8px;padding:12px 14px;">
+              <label style="font-size:13px;font-weight:700;color:#217a3c;display:block;">🔑 License Key — give this to the client</label>
+              <p class="muted" style="margin:2px 0 8px;">This is what they paste into their "Activate Your License" screen. It's long and encrypted on purpose — that's the whole license, cryptographically tied to it.</p>
+              <textarea class="dcc-lk-output" id="devlk_output" readonly></textarea>
+              <button class="btn gold" id="devlk_copyBtn" style="margin-top:8px;width:100%;" type="button">📋 Copy License Key</button>
+            </div>
+            <div style="margin-top:8px;padding:8px 12px;border:1px dashed var(--dcc-border);border-radius:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--dcc-bg-alt);">
+              <span class="muted" style="font-size:12px;">Reference ID (your own tracking only — <b>this is not the activation key, don't send it to the client</b>):</span>
+              <code id="devlk_outputSerial" style="font-size:12px;padding:2px 6px;border-radius:4px;background:#fff;border:1px solid var(--dcc-border);"></code>
+            </div>
           </div>
         </div>
 
         <div class="card">
-          <h2>📜 Issued Keys (this browser)</h2>
-          <p class="muted">A local convenience log of keys generated from this admin console — not the source of truth for validity, which is decided entirely by the encrypted payload itself.</p>
-          <div class="dcc-scroll short">
-            <table>
-              <thead><tr><th>School</th><th>Key</th><th>Expiry</th><th>Issued</th><th></th></tr></thead>
-              <tbody id="devLicenseKeysTable"></tbody>
-            </table>
+          <h2>🔏 License Signing Passphrase</h2>
+          <p class="muted">Every key is AES-encrypted with this passphrase. The same value must be set in the client ERP file's <code>LICENSE_SIGNING_SECRET</code> constant, or validation there will always fail — including with a correctly-copied key, since the error message looks identical either way.</p>
+          <div class="row">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="password" id="devLicenseSecretInput" placeholder="License signing passphrase" autocomplete="off" style="flex:1;">
+              <button class="btn small secondary" type="button" id="devLicenseSecretToggleBtn" title="Show/hide passphrase">👁</button>
+              <button class="btn small secondary" type="button" id="devLicenseSecretCopyBtn" title="Copy passphrase">📋</button>
+            </div>
           </div>
+          <button class="btn secondary" id="devLicenseSecretSaveBtn" style="margin-top:10px;">Save Passphrase</button>
+          <p class="muted" id="devLicenseSecretStatus" style="margin-top:8px;"></p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h2>📜 Issued Keys (this browser)</h2>
+        <p class="muted">A local working list of keys generated from this admin console — not the source of truth for validity, which is decided entirely by the encrypted payload itself; a client that already activated a key keeps working regardless of what happens to this row. <b>Revoke</b> deletes the row from this log (it can't remotely disable a copy already given to a client — pair it with a support/EOL policy on your side if you need a hard remote kill switch). <b>Expired</b> keys are cleared out automatically the next time you open this tab, so this list only ever shows what's currently issued and active.</p>
+        <p class="muted"><b>Reference ID vs. license key:</b> the short code in the table (e.g. <code>ANJUM-STD-2026-07330</code>) is only for you to identify a key at a glance — it will fail activation if a client types it in. Always send the long key from the <b>📋 Copy Key</b> button.</p>
+        <div class="dcc-scroll short">
+          <table>
+            <thead><tr><th>Tenant</th><th title="For your tracking only — not the activation key">Reference ID</th><th>Duration</th><th>Expiry</th><th>Tier</th><th>Devices</th><th>Status</th><th></th></tr></thead>
+            <tbody id="devLicenseKeysTable"></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -2625,16 +2683,8 @@ html[dir="rtl"] .combo-list{text-align:right;}
           <p class="muted" id="devAnnounceStatus" style="margin-top:8px;"></p>
         </div>
 
-        <!-- License Signing Passphrase -->
-        <div class="card">
-          <h2>🔏 License Signing Passphrase</h2>
-          <p class="muted">Used by the License Keys tab to sign/encrypt every key it issues. Keep this identical across time — changing it invalidates the ability to re-derive previously issued keys' payload (the keys themselves keep working, this only affects future generation).</p>
-          <div class="row">
-            <div><input type="password" id="devLicenseSecretInput" placeholder="License signing passphrase" autocomplete="off"></div>
-          </div>
-          <button class="btn secondary" id="devLicenseSecretSaveBtn" style="margin-top:10px;">Save Passphrase</button>
-          <p class="muted" id="devLicenseSecretStatus" style="margin-top:8px;"></p>
-        </div>
+        <!-- License Signing Passphrase now lives on the 🔑 License Keys tab,
+             next to the key generator it actually controls. -->
       </div>
 
       <!-- Master Auth / Security -->
@@ -4670,15 +4720,63 @@ dccDrawerBackdropEl.addEventListener('click', closeDccDrawer);
 /* ------------------------------------------------------------
    LICENSE KEYS TAB — wraps the existing ERPLicenseEngine crypto
    module with a small admin UI. Keys are signed with a passphrase
-   the developer sets once under Global Config (defaults to an
-   auto-generated one so the button works out of the box). Issued
-   keys are logged locally purely for the admin's own reference —
-   validity itself lives entirely inside the encrypted payload.
+   the developer sets once here (defaults to an auto-generated one
+   so the button works out of the box). Issued keys are logged
+   locally purely for the admin's own reference — validity itself
+   lives entirely inside the encrypted payload. See the note in the
+   tab's own copy: Status/Devices are computed from THIS log, since
+   a fully offline license has no server for a client install to
+   report activation back to.
    ------------------------------------------------------------ */
+
+/**
+ * copyTextToClipboard(text) -> Promise<boolean>
+ * navigator.clipboard.writeText() requires a "secure context" (https:// or
+ * localhost) — it throws (or in some browsers isn't even exposed as
+ * `navigator.clipboard`) when this file is opened directly as a local
+ * file:// page, which is exactly how a standalone single-file admin tool
+ * like this one is normally launched. Falls back to the older
+ * document.execCommand('copy') trick (works on file://), and if even
+ * that's blocked, surfaces the text via prompt() as a last resort so the
+ * text is at minimum selected and ready for a manual Ctrl/Cmd+C — never
+ * just silently do nothing.
+ */
+async function copyTextToClipboard(text){
+  try{
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+    throw new Error('Clipboard API unavailable in this context');
+  }catch(e){
+    try{
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      ta.style.top = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ta.setSelectionRange(0, text.length); // iOS Safari needs this explicitly
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if(ok) return true;
+    }catch(e2){ /* fall through to prompt() below */ }
+    window.prompt('Could not auto-copy — press Ctrl/Cmd+C to copy, then Enter:', text);
+    return false;
+  }
+}
+async function copyLicenseKeyToClipboard(key){
+  const ok = await copyTextToClipboard(key);
+  toast(ok ? 'License key copied' : 'Copy the key from the box that just opened');
+}
+
 function getDevLicenseSecret(){
   let secret = localStorage.getItem('dev_license_secret');
   if(!secret){
-    secret = 'anjumwebs-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    secret = 'Kwaqas5533$.';
     localStorage.setItem('dev_license_secret', secret);
   }
   return secret;
@@ -4690,6 +4788,72 @@ function getDevLicenseKeysLog(){
 function saveDevLicenseKeysLog(list){
   localStorage.setItem('dev_license_keys_log', JSON.stringify(list));
 }
+
+// Duration preset -> { days, label }. days:null means no expiry (lifetime).
+const DEVLK_DURATIONS = {
+  trial7:   { days: 7,   label: 'Trial (7 Days)' },
+  trial14:  { days: 14,  label: 'Trial (14 Days)' },
+  monthly:  { days: 30,  label: 'Monthly (30 Days)' },
+  yearly:   { days: 365, label: 'Yearly (365 Days)' },
+  lifetime: { days: null, label: 'Lifetime (No Expiry)' },
+  custom:   { days: undefined, label: null } // resolved from the date picker
+};
+const DEVLK_TIER_CODES = { Basic:'BASIC', Standard:'STD', Premium:'PREM' };
+
+function devlk_computeExpiry(durationKey, customDateVal){
+  const preset = DEVLK_DURATIONS[durationKey] || DEVLK_DURATIONS.yearly;
+  if(durationKey === 'custom') return customDateVal || null;
+  if(preset.days === null) return null; // lifetime
+  const d = new Date();
+  d.setDate(d.getDate() + preset.days);
+  return d.toISOString().slice(0,10);
+}
+function devlk_durationLabel(durationKey, expiryDate){
+  const preset = DEVLK_DURATIONS[durationKey] || DEVLK_DURATIONS.yearly;
+  if(durationKey === 'custom') return expiryDate ? `Custom (until ${expiryDate})` : 'Custom';
+  return preset.label;
+}
+function devlk_genSerial(tierLabel){
+  const tierCode = DEVLK_TIER_CODES[tierLabel] || String(tierLabel || 'CUSTOM').slice(0,5).toUpperCase().replace(/[^A-Z0-9]/g,'') || 'CUSTOM';
+  const year = new Date().getFullYear();
+  const rand = Math.random().toString(36).slice(2,7).toUpperCase();
+  return `ANJUM-${tierCode}-${year}-${rand}`;
+}
+function devlk_status(entry){
+  if(entry.revoked) return 'Revoked'; // legacy — see devlk_purgeStaleEntries below
+  if(entry.expiryDate && new Date(entry.expiryDate).getTime() < Date.now()) return 'Expired';
+  return 'Active';
+}
+function devlk_statusClass(status){
+  return status === 'Active' ? 'ok' : (status === 'Expired' ? 'warn' : 'danger');
+}
+
+/* Revoked and expired keys are removed from this log outright, not just
+   flagged — this table is a working list of currently-issued keys, not
+   a permanent record (the encrypted key itself, and its expiry/device-
+   limit terms, are what actually govern validity on the client's
+   machine; deleting the row here has zero effect on a copy already
+   activated elsewhere). Deleting an entry here does NOT touch the
+   client's own stored license — if you later hand out a fresh key for
+   the same school, that client's Renew flow still carries its
+   registered device(s) over regardless of licenseId, so nothing about
+   device-binding continuity depends on keeping this row around. Any
+   `entry.revoked === true` rows are pre-existing data from before this
+   behavior changed (revoke used to just flag, not delete) — swept up
+   here too so the log doesn't accumulate them forever. */
+function devlk_purgeStaleEntries(){
+  const log = getDevLicenseKeysLog();
+  const kept = log.filter(e => !e.revoked && devlk_status(e) !== 'Expired');
+  const removedCount = log.length - kept.length;
+  if(removedCount > 0){
+    saveDevLicenseKeysLog(kept);
+    toast(`Removed ${removedCount} expired/revoked key${removedCount>1?'s':''} from the log`);
+  }
+  return kept;
+}
+
+let devlk_renewTarget = null; // log entry currently being extended, or null
+
 function renderDevLicenseKeysTab(){
   const secretInput = document.getElementById('devLicenseSecretInput');
   if(secretInput && !secretInput.value) secretInput.value = getDevLicenseSecret();
@@ -4703,41 +4867,141 @@ function renderDevLicenseKeysTab(){
 
   const tbody = document.getElementById('devLicenseKeysTable');
   if(!tbody) return;
-  const log = getDevLicenseKeysLog();
+  const log = devlk_purgeStaleEntries();
   tbody.innerHTML = log.slice().reverse().map((entry, revIdx) => {
     const idx = log.length - 1 - revIdx;
+    const status = devlk_status(entry);
     return `
     <tr>
       <td><b>${escapeHtml(entry.schoolName)}</b></td>
-      <td class="lk-key">${escapeHtml(entry.key.slice(0,28))}…</td>
-      <td>${escapeHtml(entry.expiryDate || '—')}</td>
-      <td>${new Date(entry.issuedAt).toLocaleDateString()}</td>
-      <td><button class="btn small secondary" type="button" onclick="navigator.clipboard.writeText(${JSON.stringify(entry.key)});toast('License key copied')">📋 Copy</button></td>
+      <td class="lk-key" title="This is a reference code for your records, not the activation key. Click 📋 Copy Key on the right to get the actual license key.">${escapeHtml(entry.serialCode || entry.key.slice(0,20)+'…')}</td>
+      <td>${escapeHtml(entry.durationLabel || '—')}</td>
+      <td>${escapeHtml(entry.expiryDate || 'Never')}</td>
+      <td>${escapeHtml(entry.tier || 'Standard')}</td>
+      <td>${entry.deviceLimit === 'unlimited' ? 'Unlimited' : escapeHtml(String(entry.deviceLimit ?? 1))}</td>
+      <td><span class="pill ${devlk_statusClass(status)}">${status}</span></td>
+      <td style="white-space:nowrap;">
+        <button class="btn small secondary" type="button" title="Copies the actual license key (not the reference ID above)" onclick="copyLicenseKeyToClipboard(${JSON.stringify(entry.key)})">📋 Copy Key</button>
+        <button class="btn small secondary" type="button" onclick="devlk_startExtend(${idx})">⏳ Extend</button>
+        <button class="btn small danger" type="button" onclick="devlk_revoke(${idx})">🚫 Revoke</button>
+      </td>
     </tr>`;
-  }).join('') || `<tr><td colspan="5" class="dcc-empty-state">No license keys generated yet</td></tr>`;
+  }).join('') || `<tr><td colspan="8" class="dcc-empty-state">No license keys generated yet</td></tr>`;
 }
+
+function devlk_revoke(idx){
+  const log = getDevLicenseKeysLog();
+  const entry = log[idx];
+  if(!entry) return;
+  if(!confirm(`Revoke and remove this key for ${entry.schoolName} from your log? This only deletes it from your own tracking list here — a client who already activated it keeps working until it naturally expires. See the note above the table.`)) return;
+  log.splice(idx, 1);
+  saveDevLicenseKeysLog(log);
+  renderDevLicenseKeysTab();
+  toast('Key removed from log');
+}
+
+function devlk_startExtend(idx){
+  const log = getDevLicenseKeysLog();
+  const entry = log[idx];
+  if(!entry) return;
+  devlk_renewTarget = entry;
+  document.getElementById('devlk_school').value = entry.schoolId;
+  document.getElementById('devlk_tier').value = ['Basic','Standard','Premium'].includes(entry.tier) ? entry.tier : 'Custom';
+  document.getElementById('devlk_customTierWrap').style.display = document.getElementById('devlk_tier').value === 'Custom' ? '' : 'none';
+  if(document.getElementById('devlk_tier').value === 'Custom') document.getElementById('devlk_customTier').value = entry.tier || '';
+  document.getElementById('devlk_deviceLimit').value = entry.deviceLimit === 'unlimited' ? 1 : (entry.deviceLimit || 1);
+  document.getElementById('devlk_formTitle').textContent = '⏳ Extend License Key';
+  document.getElementById('devlk_generateBtn').textContent = '⏳ Generate Renewal Key';
+  document.getElementById('devlk_cancelRenewBtn').style.display = '';
+  const banner = document.getElementById('devlk_renewBanner');
+  banner.style.display = '';
+  banner.textContent = `Extending the existing key for ${entry.schoolName} — pick a new duration below, then hand the generated key to them as a renewal (their device stays registered, no re-activation needed).`;
+  document.getElementById('maintab-license').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function devlk_cancelExtend(){
+  devlk_renewTarget = null;
+  document.getElementById('devlk_formTitle').textContent = '🔑 Generate License Key';
+  document.getElementById('devlk_generateBtn').textContent = '🔑 Generate License Key';
+  document.getElementById('devlk_cancelRenewBtn').style.display = 'none';
+  document.getElementById('devlk_renewBanner').style.display = 'none';
+}
+document.getElementById('devlk_cancelRenewBtn').addEventListener('click', devlk_cancelExtend);
+
+document.getElementById('devlk_duration').addEventListener('change', (e) => {
+  document.getElementById('devlk_customExpiryWrap').style.display = e.target.value === 'custom' ? '' : 'none';
+});
+document.getElementById('devlk_tier').addEventListener('change', (e) => {
+  document.getElementById('devlk_customTierWrap').style.display = e.target.value === 'Custom' ? '' : 'none';
+});
+
 document.getElementById('devlk_generateBtn').addEventListener('click', async () => {
   const statusEl = document.getElementById('devlk_status');
   const schoolId = document.getElementById('devlk_school').value;
   const school = schools.find(s => s.id === schoolId);
   if(!school){ statusEl.textContent = 'Pick a client school first.'; return; }
-  const expiryDate = document.getElementById('devlk_expiry').value;
+
+  const durationKey = document.getElementById('devlk_duration').value;
+  const customDate = document.getElementById('devlk_expiry').value;
+  const expiryDate = devlk_computeExpiry(durationKey, customDate);
+  const durationLabel = devlk_durationLabel(durationKey, expiryDate);
+
+  const tierSel = document.getElementById('devlk_tier').value;
+  const tier = tierSel === 'Custom' ? (document.getElementById('devlk_customTier').value.trim() || 'Custom') : tierSel;
+
   const deviceLimit = parseInt(document.getElementById('devlk_deviceLimit').value, 10) || 1;
-  statusEl.textContent = 'Generating…';
+  const serialCode = devlk_genSerial(tier);
+  const renewing = devlk_renewTarget;
+
+  statusEl.textContent = renewing ? 'Generating renewal key…' : 'Generating…';
   try{
     const key = await ERPLicenseEngine.issueLicenseKey({
+      // Renewing keeps the SAME licenseId so the client's existing
+      // device slot(s) carry over instead of needing re-activation.
+      licenseId: renewing ? renewing.licenseId : undefined,
       clientId: school.id,
       clientName: school.name,
-      expiryDate: expiryDate || null,
+      expiryDate,
       deviceLimit,
+      tier,
+      durationLabel,
+      serialCode,
       features: Object.keys(school.moduleFlags || {}).filter(k => school.moduleFlags[k])
     }, getDevLicenseSecret());
+
     document.getElementById('devlk_output').value = key;
+    document.getElementById('devlk_outputSerial').textContent = serialCode;
     document.getElementById('devlk_outputWrap').style.display = 'block';
-    statusEl.textContent = '✅ Key generated — copy it to the school owner.';
+    statusEl.textContent = renewing
+      ? '✅ Renewal key generated — the client pastes this into their expiry lock screen.'
+      : '✅ Key generated — copy it to the school owner.';
+
     const log = getDevLicenseKeysLog();
-    log.push({ schoolId: school.id, schoolName: school.name, key, expiryDate: expiryDate || null, issuedAt: new Date().toISOString() });
+    if(renewing){
+      const idx = log.findIndex(e => e.licenseId === renewing.licenseId);
+      const entry = idx >= 0 ? log[idx] : { schoolId: school.id, schoolName: school.name };
+      Object.assign(entry, {
+        licenseId: renewing.licenseId, schoolId: school.id, schoolName: school.name,
+        key, serialCode, expiryDate, durationLabel, tier, deviceLimit,
+        revoked: false, issuedAt: new Date().toISOString()
+      });
+      if(idx >= 0) log[idx] = entry; else log.push(entry);
+    } else {
+      log.push({
+        licenseId: serialCode, // placeholder until we decrypt below; replaced right after
+        schoolId: school.id, schoolName: school.name, key, serialCode,
+        expiryDate, durationLabel, tier, deviceLimit, revoked: false,
+        issuedAt: new Date().toISOString()
+      });
+    }
+    // Read back the real licenseId ERPLicenseEngine assigned (needed so a
+    // future Extend can target the exact same record).
+    const decoded = await ERPLicenseEngine.validateLicenseKey(key, getDevLicenseSecret());
+    if(decoded.valid){
+      const target = renewing ? log.find(e => e.serialCode === serialCode) : log[log.length - 1];
+      if(target) target.licenseId = decoded.payload.licenseId;
+    }
     saveDevLicenseKeysLog(log);
+    devlk_cancelExtend();
     renderDevLicenseKeysTab();
   }catch(e){
     statusEl.textContent = 'Could not generate key: ' + e.message;
@@ -4746,8 +5010,7 @@ document.getElementById('devlk_generateBtn').addEventListener('click', async () 
 document.getElementById('devlk_copyBtn').addEventListener('click', () => {
   const out = document.getElementById('devlk_output');
   if(!out.value) return;
-  navigator.clipboard.writeText(out.value);
-  toast('License key copied');
+  copyLicenseKeyToClipboard(out.value);
 });
 document.getElementById('devLicenseSecretSaveBtn').addEventListener('click', () => {
   const val = document.getElementById('devLicenseSecretInput').value.trim();
@@ -4755,6 +5018,19 @@ document.getElementById('devLicenseSecretSaveBtn').addEventListener('click', () 
   if(!val){ statusEl.textContent = 'Passphrase cannot be empty.'; return; }
   localStorage.setItem('dev_license_secret', val);
   statusEl.textContent = '✅ Saved. Future keys sign with this passphrase.';
+});
+document.getElementById('devLicenseSecretToggleBtn').addEventListener('click', () => {
+  const input = document.getElementById('devLicenseSecretInput');
+  const btn = document.getElementById('devLicenseSecretToggleBtn');
+  const nowShowing = input.type === 'password';
+  input.type = nowShowing ? 'text' : 'password';
+  btn.textContent = nowShowing ? '🙈' : '👁';
+});
+document.getElementById('devLicenseSecretCopyBtn').addEventListener('click', async () => {
+  const val = document.getElementById('devLicenseSecretInput').value;
+  if(!val){ toast('Nothing to copy yet'); return; }
+  const ok = await copyTextToClipboard(val);
+  toast(ok ? "Passphrase copied — paste it into the client file's LICENSE_SIGNING_SECRET constant" : 'Copy it from the box that just opened');
 });
 
 /* ------------------------------------------------------------
@@ -10957,6 +11233,13 @@ const ERPLicenseEngine = (function () {
       expiryDate: fields.expiryDate || null,
       deviceLimit: fields.deviceLimit,
       features: Array.isArray(fields.features) ? fields.features : [],
+      // Optional — added for the admin-side License Keys tab (package tier
+      // + human duration label + a short display serial like
+      // "ANJUM-PREM-2026-X8Y9Z"). All default so older callers/keys that
+      // predate these fields keep working unchanged.
+      tier: fields.tier || 'Standard',
+      durationLabel: fields.durationLabel || null,
+      serialCode: fields.serialCode || null,
       issuedAt: new Date().toISOString()
     };
   }
@@ -11066,6 +11349,53 @@ const ERPLicenseEngine = (function () {
     return { valid: true, record, error: null };
   }
 
+  /**
+   * deleteLicenseRecord(licenseId, secretPassphrase)
+   * Removes a locally-stored license record entirely. Used after a
+   * renewal that issued a brand-new licenseId, to clean up the old
+   * record instead of leaving an orphaned one behind.
+   */
+  function deleteLicenseRecord(licenseId) {
+    try { localStorage.removeItem(storageKeyFor(licenseId)); } catch (e) { /* ignore */ }
+  }
+
+  /**
+   * renewLicense(newLicenseKeyString, secretPassphrase, currentRecord)
+   * Distinct from activateLicense(): activateLicense() is first-time
+   * setup and deliberately leaves an existing record untouched if one
+   * is already stored (so a duplicate activation attempt can't wipe
+   * registered devices). renewLicense() is the opposite — it's what
+   * runs when a school's admin is handed a fresh key that's meant to
+   * REPLACE the current one (e.g. after an expiry), and it needs to
+   * actually take effect: expiry date, tier, feature set, etc. all
+   * update to whatever the new key says, while any already-registered
+   * device slots carry over unchanged (so renewing doesn't burn a
+   * fresh slot on the same machine, or force re-activation on every
+   * device already running this license).
+   *
+   * @param {string} newLicenseKeyString  output of issueLicenseKey()
+   * @param {string} secretPassphrase
+   * @param {object|null} currentRecord   the record being replaced, if any
+   * @returns {Promise<{ valid: boolean, record: object|null, error: string|null }>}
+   */
+  async function renewLicense(newLicenseKeyString, secretPassphrase, currentRecord) {
+    const result = await validateLicenseKey(newLicenseKeyString, secretPassphrase);
+    if (!result.valid) return { valid: false, record: null, error: result.error };
+
+    const carriedDevices = (currentRecord && Array.isArray(currentRecord.devices)) ? currentRecord.devices : [];
+    const record = { payload: result.payload, devices: carriedDevices };
+    await saveLicenseRecord(record, secretPassphrase);
+
+    // If the new key carries a different licenseId than the one it's
+    // replacing, drop the old stored record so it doesn't linger.
+    if (currentRecord && currentRecord.payload && currentRecord.payload.licenseId
+        && currentRecord.payload.licenseId !== record.payload.licenseId) {
+      deleteLicenseRecord(currentRecord.payload.licenseId);
+    }
+
+    return { valid: true, record, error: null };
+  }
+
   /* =======================================================================
      3. MULTI-DEVICE SLOT VERIFICATION
      ======================================================================= */
@@ -11084,12 +11414,25 @@ const ERPLicenseEngine = (function () {
         { deviceId: registered.deviceId, attributes: registered.attributes },
         { threshold }
       );
-      // matchDevice() generates a fresh fingerprint of "now" internally,
-      // which is only meaningful when called for the CURRENT device. Since
-      // we already have currentFingerprint in hand, do the same weighted
-      // comparison directly against it instead of re-fingerprinting.
+      // FIX (was a functional bug): matchDevice() compares `registered`'s
+      // stored attributes against a fresh fingerprint of "now" — which is
+      // exactly what we want, since this function is only ever called
+      // for the ACTUAL current device. The previous version ignored that
+      // result (comparison.isMatch) and instead re-compared
+      // comparison.currentFingerprint.deviceId against currentFingerprint.deviceId
+      // — but both of those are generated from "now", so that check was
+      // always true regardless of which `registered` entry it was being
+      // measured against. Net effect: the very first registered device
+      // in the list always matched, so a device-limit of 1 (or any N)
+      // never actually rejected a new machine once one device was
+      // registered — the exact sharing/anti-piracy protection this
+      // engine exists to provide. Using comparison.isMatch here is the
+      // real tolerant/weighted check (allows minor browser-update drift
+      // on the SAME machine) while still telling genuinely different
+      // devices apart. The exact deviceId check stays first as a cheap
+      // fast path.
       const sameDevice = registered.deviceId === currentFingerprint.deviceId
-        || comparison.currentFingerprint.deviceId === currentFingerprint.deviceId;
+        || comparison.isMatch;
       if (sameDevice) return registered;
     }
     return null;
@@ -11263,6 +11606,8 @@ const ERPLicenseEngine = (function () {
     loadLicenseRecord,
     saveLicenseRecord,
     activateLicense,
+    renewLicense,
+    deleteLicenseRecord,
 
     // Device slots
     registerDeviceSlot,
