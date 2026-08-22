@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Al-Noor School ERP</title>
+<title>School Management System</title>
 
 <!-- ================= PWA / Offline Shell Metadata =================
      Single-file packaging: the manifest is embedded as a base64 data URI
@@ -219,6 +219,35 @@ var PWA_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192
   .pill{padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;}
   .pill.paid{background:#e2f3e6;color:#217a3c;}
   .pill.due{background:#fbe7e5;color:var(--danger);}
+  .pill.custom{background:#fbf1de;color:#9a6a14;}
+
+  /* ============================================================
+     HYBRID FEE COLLECTION — sub-tabs (Active Worklist / Paid
+     History / Student Khata) and the per-row Action ⚙️ menu.
+     ============================================================ */
+  .fee-subtabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:0;}
+  .fee-subtab-btn{
+    background:none;border:none;border-bottom:3px solid transparent;padding:9px 14px;font-size:13.5px;font-weight:600;
+    color:var(--muted);cursor:pointer;border-radius:6px 6px 0 0;transition:.15s;
+  }
+  .fee-subtab-btn:hover{background:var(--paper);color:var(--ink);}
+  .fee-subtab-btn.active{color:var(--navy-2);border-bottom-color:var(--gold);background:var(--paper);}
+  .fee-subtab-pane{display:none;}
+  .fee-subtab-pane.active{display:block;}
+
+  .fee-action-cell{position:relative;white-space:nowrap;}
+  .fee-action-menu{
+    display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--card);border:1px solid var(--line);
+    border-radius:8px;box-shadow:0 6px 20px rgba(20,30,50,.15);z-index:80;min-width:230px;overflow:hidden;
+  }
+  .fee-action-menu.show{display:block;}
+  .fee-action-menu button{
+    display:block;width:100%;text-align:left;padding:10px 13px;border:none;background:none;cursor:pointer;
+    font-size:13px;color:var(--ink);border-bottom:1px solid var(--line);
+  }
+  .fee-action-menu button:last-child{border-bottom:none;}
+  .fee-action-menu button:hover{background:var(--paper);}
+
   .muted{color:var(--muted);font-size:12.5px;}
   .toast{
     position:fixed;bottom:22px;right:22px;background:var(--navy-2);color:#fff;padding:12px 18px;border-radius:8px;
@@ -583,47 +612,97 @@ var PWA_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192
   /* ============================================================
      BULK FEE VOUCHER GENERATION — compact multi-up print layout
      ------------------------------------------------------------
-     Deliberately its own lightweight card (NOT .modern-voucher) —
-     no photos, gradients, watermark or shadows — so rendering
-     500+ of them in one #printArea write stays cheap on memory and
-     paint time. Cards are grouped into "sheet" divs of 2 or 3 (per
-     bulkV_perPage) that each map 1:1 to a printed page, separated
-     by a dashed cut line so a paper voucher can be scissor-cut from
-     the next one on the same sheet. Screen-only, scoped under
-     #printArea[data-fmt="bulk"] exactly like the a4/a5/thermal
-     variants above, so nothing here touches those. ============= */
+     Matches the modern language of the single .modern-voucher
+     receipt — gradient top strip, brand crest, pill status badge,
+     boxed itemized table, boxed totals — scaled to fit 2, 3 or 6
+     per A4 sheet. 2/3-per-page stack in one column; 6-per-page
+     lays out a 2×3 grid (set via --bv-cols/--bv-per-page and
+     [data-bv-density]). Each card is a fully-bordered, rounded
+     "ticket" with its own cut guide, so it reads as one clean
+     document however the sheet is sliced up — no more bare white
+     space between the fee table and the totals block. A thin
+     colored left-edge strip (green/amber/red) lets staff sort a
+     freshly cut stack by status at a glance. Screen-only, scoped
+     under #printArea[data-fmt="bulk"] exactly like the a4/a5/
+     thermal variants above, so nothing here touches those.
+     ============================================================ */
   #printArea[data-fmt="bulk"]{width:100%;max-width:100%;font-size:12px;}
   .bulk-voucher-sheet{
-    display:grid;grid-template-rows:repeat(var(--bv-per-page,3),1fr);
-    gap:0;page-break-after:always;break-after:page;
+    display:grid;
+    grid-template-columns:repeat(var(--bv-cols,1),1fr);
+    grid-template-rows:repeat(var(--bv-per-page,3),1fr);
+    gap:10px;padding:6px;
+    page-break-after:always;break-after:page;
   }
   .bulk-voucher-sheet:last-child{page-break-after:auto;break-after:auto;}
   .bulk-voucher-card{
-    border:1px solid #999;padding:10px 14px;position:relative;
-    page-break-inside:avoid;break-inside:avoid;
+    border:1px solid var(--line);border-left:5px solid var(--line);border-radius:10px;position:relative;
+    page-break-inside:avoid;break-inside:avoid;background:var(--card);
+    font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Arial,sans-serif;
+    display:flex;flex-direction:column;overflow:hidden;
+    box-shadow:0 1px 3px rgba(20,30,50,.08);
   }
-  .bulk-voucher-card + .bulk-voucher-card{border-top:1px dashed #666;}
+  .bulk-voucher-card[data-status="Paid"]{border-left-color:#217a3c;}
+  .bulk-voucher-card[data-status="Unpaid"]{border-left-color:var(--danger);}
+  .bulk-voucher-card[data-status="Partial"]{border-left-color:var(--gold);}
   .bulk-voucher-card::before{
-    content:"✂ cut here";font-size:8px;letter-spacing:.5px;color:#999;
-    position:absolute;top:-7px;left:14px;background:#fff;padding:0 6px;
+    content:"✂ cut here";font-size:7.5px;letter-spacing:.5px;color:#999;
+    position:absolute;top:-7px;left:14px;background:var(--card);padding:0 6px;z-index:2;
   }
-  .bulk-voucher-card:first-child::before{content:none;}
-  .bvc-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #333;padding-bottom:5px;margin-bottom:6px;}
-  .bvc-school{font-weight:800;font-size:13px;}
-  .bvc-school .sub{font-weight:400;font-size:9.5px;color:#555;}
-  .bvc-doctitle{font-size:11px;font-weight:700;text-align:right;}
-  .bvc-doctitle .no{font-weight:400;font-size:9px;color:#555;}
-  .bvc-meta{display:grid;grid-template-columns:1fr 1fr;gap:1px 10px;font-size:10.5px;margin-bottom:6px;}
-  .bvc-meta b{font-weight:600;}
-  .bvc-items{width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:4px;}
-  .bvc-items td{padding:1.5px 0;}
-  .bvc-items td:last-child{text-align:right;}
-  .bvc-totals{font-size:10.5px;border-top:1px solid #333;padding-top:3px;}
-  .bvc-totals .row{display:flex;justify-content:space-between;}
-  .bvc-totals .grand{font-weight:800;font-size:12px;}
-  .bvc-status{font-size:9px;font-weight:700;padding:1px 6px;border:1px solid #333;border-radius:3px;}
+  .bvc-topbar{height:3px;background:linear-gradient(90deg,var(--navy-2) 0%,var(--teal) 55%,var(--gold) 100%);flex-shrink:0;}
+  .bvc-inner{padding:9px 14px 8px;flex:1;display:flex;flex-direction:column;min-height:0;gap:6px;}
+  .bvc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding-bottom:6px;border-bottom:1px solid var(--line);}
+  .bvc-brand{display:flex;align-items:center;gap:7px;min-width:0;}
+  .bvc-crest{width:22px;height:22px;border-radius:50%;background:var(--gold);color:var(--navy-2);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:9.5px;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,.15);}
+  .bvc-school{font-weight:800;font-size:12px;color:var(--navy-2);line-height:1.25;min-width:0;}
+  .bvc-school .sub{font-weight:400;font-size:8px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .bvc-doctitle{text-align:right;flex-shrink:0;}
+  .bvc-doctitle .tag{background:var(--navy-2);color:#fff;font-size:8px;font-weight:800;letter-spacing:.5px;padding:3px 10px;border-radius:20px;display:inline-block;white-space:nowrap;}
+  .bvc-doctitle .no{font-size:7.5px;color:var(--muted);margin-top:3px;letter-spacing:.2px;}
+  .bvc-studentline{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:800;font-size:13px;color:var(--ink);}
+  .bvc-meta{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;font-size:9.5px;color:var(--ink);
+    background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:5px 9px;}
+  .bvc-meta span{color:var(--muted);}
+  .bvc-meta b{font-weight:700;}
+  .bvc-items-wrap{border:1px solid var(--line);border-radius:6px;overflow:hidden;}
+  .bvc-items{width:100%;border-collapse:collapse;font-size:9.5px;}
+  .bvc-items thead th{background:var(--teal-light);color:var(--navy-2);font-weight:800;font-size:7.5px;text-transform:uppercase;letter-spacing:.4px;padding:4px 9px;text-align:left;}
+  .bvc-items th:last-child,.bvc-items td:last-child{text-align:right;font-variant-numeric:tabular-nums;}
+  .bvc-items td{padding:3px 9px;color:var(--ink);}
+  .bvc-items tbody tr:not(:last-child) td{border-bottom:1px dashed var(--line);}
+  .bvc-items tbody tr:nth-child(even){background:color-mix(in srgb, var(--paper) 55%, transparent);}
+  .bvc-totals{margin-top:auto;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:1px 11px;}
+  .bvc-totals .row{display:flex;justify-content:space-between;font-size:9.5px;padding:3px 0;color:var(--muted);font-variant-numeric:tabular-nums;}
+  .bvc-totals .row:not(:last-child){border-bottom:1px dashed var(--line);}
+  .bvc-totals .grand{font-weight:800;font-size:12.5px;color:var(--navy-2);padding:5px 0;border-top:none;}
+  .bvc-words{font-size:8.5px;color:var(--muted);font-style:italic;}
+  .bvc-footernote{font-size:8.5px;color:var(--navy-2);background:var(--teal-light);border-radius:6px;padding:4px 9px;}
+  .bvc-foot{display:flex;align-items:flex-end;gap:14px;margin-top:2px;}
+  .bvc-sign{flex:1;text-align:center;}
+  .bvc-sign-line{border-top:1.2px solid var(--ink);margin-bottom:3px;}
+  .bvc-sign span{font-size:7.5px;color:var(--muted);letter-spacing:.2px;}
+  .bvc-status{font-size:7.5px;font-weight:800;padding:2.5px 10px;border-radius:20px;letter-spacing:.4px;text-transform:uppercase;flex-shrink:0;}
+  .bvc-status.paid{background:#e2f3e6;color:#217a3c;}
+  .bvc-status.due{background:#fbe7e5;color:var(--danger);}
+  .bvc-status.partial{background:#fbf1de;color:#9a6a14;}
+  .bvc-note{font-size:7.5px;color:var(--muted);text-align:center;border-top:1px dashed var(--line);padding-top:4px;}
+
+  /* Compact density for 6-up (2×3) sheets — smaller cards, so trim
+     padding/gaps and drop the least essential line (footer note)
+     rather than shrinking text past legibility. */
+  #printArea[data-fmt="bulk"][data-bv-density="compact"] .bvc-inner{padding:7px 10px 6px;gap:4px;}
+  #printArea[data-fmt="bulk"][data-bv-density="compact"] .bvc-school{font-size:10.5px;}
+  #printArea[data-fmt="bulk"][data-bv-density="compact"] .bvc-studentline{font-size:11.5px;}
+  #printArea[data-fmt="bulk"][data-bv-density="compact"] .bvc-meta{font-size:8.5px;padding:4px 8px;}
+  #printArea[data-fmt="bulk"][data-bv-density="compact"] .bvc-items,
+  #printArea[data-fmt="bulk"][data-bv-density="compact"] .bvc-totals .row{font-size:8.5px;}
+  #printArea[data-fmt="bulk"][data-bv-density="compact"] .bvc-totals .grand{font-size:11px;}
+  #printArea[data-fmt="bulk"][data-bv-density="compact"] .bvc-footernote{display:none;}
+  #printArea[data-fmt="bulk"][data-bv-density="compact"] .bulk-voucher-sheet{gap:7px;padding:5px;}
+
   @media print{
     #printArea[data-fmt="bulk"]{max-width:190mm;}
+    .bulk-voucher-card{box-shadow:none !important;}
   }
 
   /* ---- Auth Gate: hide the app until logged in ---- */
@@ -1319,34 +1398,74 @@ html[dir="rtl"] .combo-list{text-align:right;}
 
       <div class="total-line"><span>Total Payable</span><span id="f_total">Rs. 0</span></div>
 
-      <div class="row">
-        <div>
-          <label>Amount Paid</label>
-          <input type="number" id="f_paid" value="0">
-        </div>
-        <div>
-          <label>Status</label>
-          <select id="f_status">
-            <option value="Paid">Paid</option>
-            <option value="Unpaid" selected>Unpaid / Due</option>
-            <option value="Partial">Partially Paid</option>
-          </select>
-        </div>
-      </div>
+      <label>Amount Paid</label>
+      <input type="number" id="f_paid" value="0">
+      <!-- Status is no longer a manual choice — it's derived from Amount
+           Paid vs Total Payable the same way everywhere else in this
+           module (Receive Payment, bulk generation, waivers) already
+           computes it: 0 paid = Unpaid, something but not all = Partial,
+           full or more = Paid. One rule, calculated live, not typed in
+           by whoever's at the counter. -->
+      <p class="muted" id="f_statusPreview" style="min-height:16px;"></p>
 
       <button class="btn" id="genVoucherBtn">Save &amp; Generate Voucher</button>
     </div>
+  </div>
 
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-        <h2 style="margin:0;">Fee Vouchers Issued</h2>
+  <!-- ================= HYBRID FEE COLLECTION — 3 TABS =================
+       Tab 1 is the day-to-day worklist: only students who still owe
+       something for the month currently in view. The "auto-disappear"
+       behavior asked for isn't a separate archive-move step — status is
+       now always DERIVED from paid vs total (see f_statusPreview note
+       above, and every place that mutates a voucher's `paid`), so the
+       moment a balance hits zero the voucher's status flips to 'Paid'
+       and Tab 1's own filter (status !== 'Paid') stops matching it on
+       the very next render. Tab 2 just shows the flip side of that same
+       filter. Nothing is physically moved or deleted — same `vouchers`
+       array, same fields, just two different views over it. -->
+  <div class="card fee-hybrid-card" style="margin-top:18px;">
+    <div class="fee-subtabs">
+      <button class="fee-subtab-btn active" data-feetab="active" onclick="switchFeeSubtab('active')">🔴 Active Unpaid / Partial</button>
+      <button class="fee-subtab-btn" data-feetab="paid" onclick="switchFeeSubtab('paid')">🟢 Paid Receipts History</button>
+      <button class="fee-subtab-btn" data-feetab="ledger" onclick="switchFeeSubtab('ledger')">📋 Student Khata / Ledger</button>
+    </div>
+
+    <div class="fee-subtab-pane active" id="feeSubtab-active">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div>
+            <label style="margin:0;">Month</label>
+            <input type="month" id="feeWorklistMonth">
+          </div>
+          <input type="text" id="feeWorklistSearch" placeholder="Search by student name or roll no..." style="min-width:220px;">
+        </div>
         <button class="btn secondary" id="bulkVoucherBtn" type="button" style="display:none;margin-top:0;">📚 Bulk Vouchers</button>
       </div>
-      <input type="text" id="feeSearch" placeholder="Search by student name or roll no...">
       <table>
-        <thead><tr><th>Student</th><th>Period</th><th>Total</th><th>Status</th><th>Actions</th></tr></thead>
-        <tbody id="voucherTable"></tbody>
+        <thead><tr><th>Student</th><th>Period</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="feeWorklistTable"></tbody>
       </table>
+    </div>
+
+    <div class="fee-subtab-pane" id="feeSubtab-paid">
+      <input type="text" id="feePaidSearch" placeholder="Search by student name or roll no..." style="margin-top:14px;">
+      <table>
+        <thead><tr><th>Student</th><th>Period</th><th>Total</th><th>Paid On</th><th>Status</th><th>Receipt</th></tr></thead>
+        <tbody id="feePaidTable"></tbody>
+      </table>
+    </div>
+
+    <div class="fee-subtab-pane" id="feeSubtab-ledger">
+      <p class="muted" style="margin-top:14px;">Search any student to view their complete financial ledger and historical arrears — same 360° ledger as the Student Ledger tab, scoped to Financial Details.</p>
+      <label>Select Student *</label>
+      <div class="combobox">
+        <input type="text" id="feeLdg_studentSearch" class="combo-input" placeholder="Type student name or roll no...">
+        <input type="hidden" id="feeLdg_student">
+        <div class="combo-list" id="feeLdg_studentList"></div>
+      </div>
+      <div id="feeLedgerResult" style="margin-top:18px;">
+        <p class="muted">Search and select a student above to view their ledger.</p>
+      </div>
     </div>
   </div>
 </section>
@@ -1374,7 +1493,8 @@ html[dir="rtl"] .combo-list{text-align:right;}
 
     <label>Vouchers Per Page</label>
     <select id="bulkV_perPage">
-      <option value="3" selected>3 per page (compact, saves paper)</option>
+      <option value="6" selected>6 per page (2×3 grid, saves the most paper)</option>
+      <option value="3">3 per page (compact, single column)</option>
       <option value="2">2 per page (larger print)</option>
     </select>
 
@@ -1383,6 +1503,62 @@ html[dir="rtl"] .combo-list{text-align:right;}
     <div class="modal-actions" style="justify-content:flex-end;margin:16px -20px 0;">
       <button class="btn ghost" onclick="closeBulkVoucherModal()">Cancel</button>
       <button class="btn gold" id="bulkVoucherGenerateBtn" type="button">Generate</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= RECEIVE PAYMENT MODAL =================
+     Updates the SAME voucher's paid/balance/status in place. This is
+     deliberately NOT a "generate another voucher" flow — that was the
+     old workaround front-desk staff used, which left the original
+     Unpaid/Pending voucher sitting in the list forever alongside a new
+     Paid one for the same dues. -->
+<div class="modal-bg" id="receivePaymentModalBg">
+  <div class="modal-box" style="max-width:420px;padding:20px 20px 0;">
+    <span class="close-x" onclick="closeReceivePaymentModal()">&times;</span>
+    <h2 style="margin-top:0;">💵 Add Payment (Receive Fee)</h2>
+    <p class="muted" id="rp_info"></p>
+
+    <label>Amount Received Now</label>
+    <input type="number" id="rp_amount" min="0" step="0.01" value="0">
+
+    <label>Payment Mode</label>
+    <select id="rp_mode">
+      <option value="Cash">Cash</option>
+      <option value="Online">Online</option>
+    </select>
+
+    <label>Note (optional)</label>
+    <input type="text" id="rp_note" placeholder="e.g. Paid via JazzCash, receipt #1234">
+
+    <p class="muted" id="rp_hint" style="min-height:16px;"></p>
+
+    <div class="modal-actions" style="justify-content:flex-end;margin:16px -20px 0;">
+      <button class="btn ghost" onclick="closeReceivePaymentModal()">Cancel</button>
+      <button class="btn gold" id="rp_confirmBtn" type="button">Confirm Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= FEE WAIVER / DISCOUNT MODAL ================= -->
+<div class="modal-bg" id="waiverModalBg">
+  <div class="modal-box" style="max-width:420px;padding:20px 20px 0;">
+    <span class="close-x" onclick="closeWaiverModal()">&times;</span>
+    <h2 style="margin-top:0;">🏷️ Fee Waiver / Discount (رعایت / معافی)</h2>
+    <p class="muted" id="wv_info"></p>
+
+    <label>Waiver Amount</label>
+    <input type="number" id="wv_amount" min="0" step="0.01" value="0">
+
+    <label>Reason</label>
+    <input type="text" id="wv_reason" placeholder="e.g. Sibling discount, merit scholarship">
+
+    <div class="total-line" style="margin-top:10px;"><span>Recalculated Total Due</span><span id="wv_newTotal">Rs. 0</span></div>
+    <p class="muted" id="wv_hint" style="min-height:16px;"></p>
+
+    <div class="modal-actions" style="justify-content:flex-end;margin:16px -20px 0;">
+      <button class="btn ghost" onclick="closeWaiverModal()">Cancel</button>
+      <button class="btn gold" id="wv_confirmBtn" type="button">Apply Waiver</button>
     </div>
   </div>
 </div>
@@ -4019,7 +4195,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.classList.add('active');
     document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
     if(btn.dataset.tab==='dashboard') renderDashboard();
-    if(btn.dataset.tab==='fee') renderFeeHeads();
+    if(btn.dataset.tab==='fee'){ renderFeeHeads(); renderVouchers(); }
     if(btn.dataset.tab==='reg') { renderRegFeeHeads(); if(!editingStudentId) prefillRegFeeDefaults(); }
     if(btn.dataset.tab==='installments') { renderBiFeeHeads(); renderReminders(); }
     if(btn.dataset.tab==='settings') { renderSettingsPanel(); applyBranding(); renderManageUsers(); }
@@ -4133,6 +4309,16 @@ const feeCombo = initCombobox('f_studentSearch','f_student','f_studentList', act
     `${escapeHtml(s.name)} | Father: ${escapeHtml(s.father)} | Class: ${escapeHtml(s.class)} | Session: ${escapeHtml(s.session)}` : '';
   renderFeeHeads(id);
   if(typeof fx_renderHint === 'function') fx_renderHint(id); // Sibling Fee Concession hint, see bottom of file
+});
+
+// Tab 3 of the Hybrid Fee Collection module ("📋 Student Khata /
+// Ledger Search") — its own combobox, same student list, feeding the
+// generalized renderLedger(studentId, boxId) so it reuses the exact
+// same 360° ledger rendering (and Print/WhatsApp) as the standalone
+// Student Ledger tab, just targeting a different container.
+const feeLdgCombo = initCombobox('feeLdg_studentSearch','feeLdg_student','feeLdg_studentList', studentComboItems, (id)=>{
+  ledgerViewMode = 'financial'; // Tab 3 is scoped to financial details per the spec
+  renderLedger(id, 'feeLedgerResult');
 });
 
 const examCombo = initCombobox('e_studentSearch','e_student','e_studentList', activeStudentComboItems, (id)=>{
@@ -4611,8 +4797,8 @@ function renderFeeHeads(studentId){
         <span>${escapeHtml(f.name)}</span>
         <input type="number" class="feeAmt" data-name="${escapeHtml(f.name)}" value="${f.amount}">
       </div>`).join('') || `<p class="muted">No fee heads configured. Add some in Settings.</p>`;
-    box.querySelectorAll('.feeChk, .feeAmt').forEach(el=>el.addEventListener('input', updateFeeTotal));
-    updateFeeTotal();
+    box.querySelectorAll('.feeChk, .feeAmt').forEach(el=>el.addEventListener('input', updateFeeStatusPreview));
+    updateFeeStatusPreview();
     return;
   }
 
@@ -4645,8 +4831,8 @@ function renderFeeHeads(studentId){
   }).join('');
 
   box.innerHTML = autoRows + otherRows || `<p class="muted">No fee heads configured. Add some in Settings.</p>`;
-  box.querySelectorAll('.feeChk, .feeAmt').forEach(el=>el.addEventListener('input', updateFeeTotal));
-  updateFeeTotal();
+  box.querySelectorAll('.feeChk, .feeAmt').forEach(el=>el.addEventListener('input', updateFeeStatusPreview));
+  updateFeeStatusPreview();
 }
 
 function updateFeeTotal(){
@@ -4683,7 +4869,7 @@ document.getElementById('genVoucherBtn').addEventListener('click', ()=>{
 
   const total = items.reduce((a,b)=>a+b.amount,0);
   const paid = Number(document.getElementById('f_paid').value||0);
-  const status = document.getElementById('f_status').value;
+  const status = computeVoucherStatus(total, paid);
 
   const voucher = {
     id: uid('FV'), studentId, month, items, total, paid,
@@ -4702,6 +4888,18 @@ document.getElementById('genVoucherBtn').addEventListener('click', ()=>{
   resetFeeForm();
 });
 
+/* Status preview under Amount Paid — see the note in the panel-fee
+   markup: there's no manual status field to set anymore, so this is
+   purely informational, recalculated live as the amount changes. */
+function updateFeeStatusPreview(){
+  const total = updateFeeTotal();
+  const paid = Number(document.getElementById('f_paid').value||0);
+  const status = computeVoucherStatus(total, paid);
+  const label = status==='Paid' ? '✅ Will be marked Paid' : (status==='Partial' ? '🟡 Will be marked Partially Paid' : '🔴 Will be marked Unpaid');
+  document.getElementById('f_statusPreview').textContent = `${label} (Balance: ${money(Math.max(0,total-paid))})`;
+}
+document.getElementById('f_paid').addEventListener('input', updateFeeStatusPreview);
+
 /* Bug fix: the student search combobox was left holding the selected
    student's full label text after a voucher was generated. Since the
    combobox re-filters its full candidate list against whatever text is
@@ -4715,32 +4913,128 @@ function resetFeeForm(){
   feeCombo.clear();
   document.getElementById('f_studentInfo').textContent = '';
   document.getElementById('f_paid').value = 0;
-  document.getElementById('f_status').value = 'Unpaid';
   renderFeeHeads(); // no studentId -> falls back to the plain fee-head list
+  updateFeeStatusPreview();
+}
+
+/* ============================================================
+   HYBRID FEE COLLECTION — Tab 1 (Active Unpaid/Partial Worklist)
+   and Tab 2 (Paid Receipts History). Both read straight off the
+   same `vouchers` array; there's no separate "archive" store to
+   move records into. A voucher's status is always DERIVED from
+   paid vs total (see computeVoucherStatus below — used here, in
+   Receive Payment, in the waiver handler, and in voucher
+   generation), so the moment balance hits 0 it stops matching
+   Tab 1's filter and starts matching Tab 2's on the very next
+   render. renderVouchers() is kept as the single "refresh both"
+   entry point so every existing call site around the app that
+   already calls it after a save keeps working unchanged.
+   ============================================================ */
+function computeVoucherStatus(total, paid){
+  if(paid <= 0) return 'Unpaid';
+  if(paid < total) return 'Partial';
+  return 'Paid';
+}
+
+function switchFeeSubtab(name){
+  document.querySelectorAll('.fee-subtab-btn').forEach(b=>b.classList.toggle('active', b.dataset.feetab===name));
+  document.querySelectorAll('.fee-subtab-pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('feeSubtab-'+name).classList.add('active');
+  closeFeeActionMenus();
 }
 
 function renderVouchers(filter=''){
-  const tbody = document.getElementById('voucherTable');
-  const f = filter.toLowerCase();
+  const worklistSearch = document.getElementById('feeWorklistSearch');
+  const paidSearch = document.getElementById('feePaidSearch');
+  renderFeeWorklist(worklistSearch ? worklistSearch.value : filter);
+  renderPaidHistory(paidSearch ? paidSearch.value : filter);
+}
+
+function renderFeeWorklist(search=''){
+  const tbody = document.getElementById('feeWorklistTable');
+  if(!tbody) return;
+  const monthInput = document.getElementById('feeWorklistMonth');
+  const month = monthInput ? monthInput.value : '';
+  const f = search.toLowerCase();
   const rows = vouchers.filter(v=>{
+    if(v.status === 'Paid') return false; // auto-disappear — see status note above
+    if(month && v.month !== month) return false;
     const s = students.find(x=>x.id===v.studentId);
     return s && (s.name.toLowerCase().includes(f) || s.roll.toLowerCase().includes(f));
   }).reverse();
   tbody.innerHTML = rows.map(v=>{
-    const s = students.find(x=>x.id===v.studentId) || {name:'(deleted student)',roll:''};
+    const s = students.find(x=>x.id===v.studentId) || {name:'(deleted student)', roll:'', class:''};
+    return `<tr>
+      <td>${escapeHtml(s.name)}<br><span class="muted">${escapeHtml(s.roll)}${s.class ? ' · '+escapeHtml(s.class) : ''}</span></td>
+      <td>${v.month}</td>
+      <td>${money(v.total)}</td>
+      <td>${money(v.paid||0)}</td>
+      <td>${money(v.balance)}</td>
+      <td><span class="pill ${v.status==='Partial'?'custom':'due'}">${v.status}</span></td>
+      <td class="fee-action-cell">
+        <button class="btn small secondary" type="button" onclick="toggleFeeActionMenu(event,'${v.id}')">Action ⚙️</button>
+        <div class="fee-action-menu" id="feeActionMenu-${v.id}">
+          <button type="button" onclick="closeFeeActionMenus();openReceivePaymentModal('${v.id}')">💵 Add Payment (Receive Fee)</button>
+          <button type="button" onclick="closeFeeActionMenus();openWaiverModal('${v.id}')">🏷️ Fee Waiver / Discount</button>
+          <button type="button" onclick="closeFeeActionMenus();sendVoucherReminder('${v.id}')">📲 Send WhatsApp Reminder</button>
+          <button type="button" onclick="closeFeeActionMenus();showReceipt('${v.id}')">🧾 View Voucher</button>
+          <button type="button" onclick="closeFeeActionMenus();deleteVoucher('${v.id}')">🗑️ Delete Voucher</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="7" class="muted">No unpaid or partially paid vouchers${month ? ' for '+month : ''}.</td></tr>`;
+}
+
+function renderPaidHistory(search=''){
+  const tbody = document.getElementById('feePaidTable');
+  if(!tbody) return;
+  const f = search.toLowerCase();
+  const rows = vouchers.filter(v=>{
+    if(v.status !== 'Paid') return false;
+    const s = students.find(x=>x.id===v.studentId);
+    return s && (s.name.toLowerCase().includes(f) || s.roll.toLowerCase().includes(f));
+  }).reverse();
+  tbody.innerHTML = rows.map(v=>{
+    const s = students.find(x=>x.id===v.studentId) || {name:'(deleted student)', roll:''};
     return `<tr>
       <td>${escapeHtml(s.name)}<br><span class="muted">${escapeHtml(s.roll)}</span></td>
       <td>${v.month}</td>
       <td>${money(v.total)}</td>
-      <td><span class="pill ${v.status==='Paid'?'paid':'due'}">${v.status}</span></td>
-      <td>
-        <button class="btn small secondary" onclick="showReceipt('${v.id}')">Receipt</button>
-        <button class="btn small danger" onclick="deleteVoucher('${v.id}')">Delete</button>
-      </td>
+      <td>${v.date}</td>
+      <td><span class="pill paid">Paid</span></td>
+      <td><button class="btn small secondary" onclick="showReceipt('${v.id}')">🖨 Print Receipt</button></td>
     </tr>`;
-  }).join('') || `<tr><td colspan="5" class="muted">No vouchers issued yet.</td></tr>`;
+  }).join('') || `<tr><td colspan="6" class="muted">No fully paid vouchers yet.</td></tr>`;
 }
-document.getElementById('feeSearch').addEventListener('input', e=>renderVouchers(e.target.value));
+
+/* ---- Tab 1 / Tab 2 filter controls ----
+   Month defaults to the current month on load (the "Month-Specific
+   Active Collection Worklist" default filter from the spec) but stays
+   fully editable — clear it to see every open balance regardless of
+   period, or pick an older month to chase that period's specific
+   defaulters. Tab 2 has no month filter by design: it's a receipts
+   archive, meant to be searched across all history. */
+(function initFeeWorklistFilters(){
+  const monthInput = document.getElementById('feeWorklistMonth');
+  if(monthInput && !monthInput.value) monthInput.value = new Date().toISOString().slice(0,7);
+  monthInput?.addEventListener('change', ()=>renderFeeWorklist(document.getElementById('feeWorklistSearch')?.value || ''));
+  document.getElementById('feeWorklistSearch')?.addEventListener('input', e=>renderFeeWorklist(e.target.value));
+  document.getElementById('feePaidSearch')?.addEventListener('input', e=>renderPaidHistory(e.target.value));
+})();
+
+/* ---- Action ⚙️ dropdown menu (Tab 1 rows) ---- */
+function toggleFeeActionMenu(evt, voucherId){
+  evt.stopPropagation();
+  const menu = document.getElementById('feeActionMenu-'+voucherId);
+  if(!menu) return;
+  const wasOpen = menu.classList.contains('show');
+  closeFeeActionMenus();
+  if(!wasOpen) menu.classList.add('show');
+}
+function closeFeeActionMenus(){
+  document.querySelectorAll('.fee-action-menu.show').forEach(m=>m.classList.remove('show'));
+}
+document.addEventListener('click', closeFeeActionMenus);
 
 function deleteVoucher(id){
   if(!confirm('Delete this voucher?')) return;
@@ -4761,6 +5055,137 @@ function deleteVoucher(id){
     }
   }
   saveVouchers(); renderVouchers(); renderDashboard();
+}
+
+/* ---- Receive Payment against an EXISTING voucher ----
+   Fixes the earlier workaround where receiving a student's fee meant
+   generating a brand-new voucher through the "Generate Fee Voucher"
+   form. That left the original Unpaid/Pending voucher for the same
+   dues still sitting in the Fee Vouchers Issued list, so every
+   payment appeared to create a duplicate slip. This updates the
+   voucher's own paid/balance/status in place instead. */
+let rp_voucherId = null;
+
+function openReceivePaymentModal(voucherId){
+  const v = vouchers.find(x=>x.id===voucherId);
+  if(!v) return;
+  rp_voucherId = voucherId;
+  const s = students.find(x=>x.id===v.studentId) || {name:'(deleted student)', roll:''};
+  document.getElementById('rp_info').textContent =
+    `${s.name} (${s.roll}) — ${v.month} — Total ${money(v.total)}, already paid ${money(v.paid||0)}, balance due ${money(v.balance)}.`;
+  const amtInput = document.getElementById('rp_amount');
+  amtInput.value = Math.max(0, Number(v.balance||0));
+  amtInput.max = Math.max(0, Number(v.balance||0));
+  document.getElementById('rp_mode').value = 'Cash';
+  document.getElementById('rp_note').value = '';
+  document.getElementById('rp_hint').textContent = '';
+  document.getElementById('receivePaymentModalBg').classList.add('show');
+}
+function closeReceivePaymentModal(){
+  document.getElementById('receivePaymentModalBg').classList.remove('show');
+  rp_voucherId = null;
+}
+document.getElementById('receivePaymentModalBg').addEventListener('click', e=>{
+  if(e.target.id==='receivePaymentModalBg') closeReceivePaymentModal();
+});
+
+document.getElementById('rp_confirmBtn').addEventListener('click', ()=>{
+  const v = vouchers.find(x=>x.id===rp_voucherId);
+  if(!v){ closeReceivePaymentModal(); return; }
+  const amountNow = Number(document.getElementById('rp_amount').value||0);
+  if(amountNow <= 0){ document.getElementById('rp_hint').textContent = 'Enter an amount greater than 0.'; return; }
+  const mode = document.getElementById('rp_mode').value;
+  const note = document.getElementById('rp_note').value.trim();
+
+  v.paid = Number(v.paid||0) + amountNow;
+  v.balance = v.total - v.paid;
+  v.status = computeVoucherStatus(v.total, v.paid);
+  v.payments = v.payments || [];
+  v.payments.push({ amount: amountNow, mode, note, date: new Date().toISOString().slice(0,10) });
+
+  saveVouchers();
+  renderVouchers();
+  renderDashboard();
+  toast('Payment received');
+  closeReceivePaymentModal();
+  showReceipt(v.id);
+});
+
+/* ---- Fee Waiver / Discount ----
+   Reduces the voucher's total (not just its balance) so a discounted
+   student's receipt reflects the discounted total going forward, while
+   keeping the original itemized fee heads untouched and logging every
+   waiver on the voucher itself (v.waivers[]) so nothing about the
+   original charge is lost — same "don't wipe history" principle as
+   Receive Payment logging to v.payments[] above. */
+let wv_voucherId = null;
+
+function openWaiverModal(voucherId){
+  const v = vouchers.find(x=>x.id===voucherId);
+  if(!v) return;
+  wv_voucherId = voucherId;
+  const s = students.find(x=>x.id===v.studentId) || {name:'(deleted student)', roll:''};
+  document.getElementById('wv_info').textContent =
+    `${s.name} (${s.roll}) — ${v.month} — Current Total ${money(v.total)}, Balance Due ${money(v.balance)}.`;
+  document.getElementById('wv_amount').value = 0;
+  document.getElementById('wv_amount').max = Math.max(0, Number(v.balance||0));
+  document.getElementById('wv_reason').value = '';
+  document.getElementById('wv_hint').textContent = '';
+  updateWaiverPreview();
+  document.getElementById('waiverModalBg').classList.add('show');
+}
+function closeWaiverModal(){
+  document.getElementById('waiverModalBg').classList.remove('show');
+  wv_voucherId = null;
+}
+document.getElementById('waiverModalBg').addEventListener('click', e=>{
+  if(e.target.id==='waiverModalBg') closeWaiverModal();
+});
+function updateWaiverPreview(){
+  const v = vouchers.find(x=>x.id===wv_voucherId);
+  if(!v) return;
+  const amt = Number(document.getElementById('wv_amount').value||0);
+  document.getElementById('wv_newTotal').textContent = money(Math.max(0, v.total - amt));
+}
+document.getElementById('wv_amount').addEventListener('input', updateWaiverPreview);
+document.getElementById('wv_confirmBtn').addEventListener('click', ()=>{
+  const v = vouchers.find(x=>x.id===wv_voucherId);
+  if(!v){ closeWaiverModal(); return; }
+  const amt = Number(document.getElementById('wv_amount').value||0);
+  const reason = document.getElementById('wv_reason').value.trim();
+  const hint = document.getElementById('wv_hint');
+  if(amt <= 0){ hint.textContent = 'Enter a waiver amount greater than 0.'; return; }
+  if(amt > Number(v.balance||0)){ hint.textContent = 'Waiver cannot exceed the current balance due.'; return; }
+  if(!reason){ hint.textContent = 'Enter a reason for the waiver.'; return; }
+
+  v.waivers = v.waivers || [];
+  v.waivers.push({ amount: amt, reason, date: new Date().toISOString().slice(0,10) });
+  v.total = Math.max(0, v.total - amt);
+  v.balance = Math.max(0, v.total - Number(v.paid||0));
+  v.status = computeVoucherStatus(v.total, v.paid);
+
+  saveVouchers();
+  renderVouchers();
+  renderDashboard();
+  toast('Waiver applied');
+  closeWaiverModal();
+});
+
+/* ---- Send WhatsApp Reminder ----
+   NOTE: named sendVoucherReminder (not sendFeeReminder) — the
+   Installments & Reminders tab already has a sendFeeReminder(studentId)
+   that aggregates ALL of a student's outstanding vouchers into one
+   message; a second same-named function here would have silently
+   overridden it (last function declaration wins in JS), breaking that
+   tab's existing "💬 Remind" button. Rather than duplicate the WhatsApp-
+   message-building logic under a new name, this just resolves the
+   voucher's student and hands off to that same, more complete
+   reminder — one student, every open balance, not just this one
+   voucher. */
+function sendVoucherReminder(voucherId){
+  const v = vouchers.find(x=>x.id===voucherId);
+  if(!v){ toast('Voucher not found'); return; }
+  sendFeeReminder(v.studentId);
 }
 
 function showReceipt(voucherId){
@@ -5171,29 +5596,64 @@ function bv_priorBalance(student, excludeVoucherId){
 function bv_cardHtml(student, voucher, priorBalance){
   const sch = settings.school || {};
   const schoolName = escapeHtml((sch.name || 'SCHOOL').toUpperCase());
+  const crestLetter = escapeHtml((sch.name || 'S').trim().charAt(0).toUpperCase() || 'S');
   const grandTotal = Number(voucher.total||0) + priorBalance;
   const balanceDue = grandTotal - Number(voucher.paid||0);
   const status = voucher.status;
+  const statusClass = status==='Paid' ? 'paid' : (status==='Partial' ? 'partial' : 'due');
   const itemsRows = voucher.items.map(i=>`<tr><td>${escapeHtml(i.name)}</td><td>${money(i.amount)}</td></tr>`).join('')
     + (priorBalance>0 ? `<tr><td>Previous Balance B/F</td><td>${money(priorBalance)}</td></tr>` : '');
+  // Extra identity/contact fields — filled whenever the student record
+  // has them, so the card carries as much useful, verifiable detail
+  // as the single-voucher print already does, instead of empty space.
+  const extraMeta = [
+    ['Admission No', student.admissionNo],
+    ['Session', student.session],
+    ['Contact', student.phone]
+  ].filter(([,v])=>v).map(([label,v])=>`<div><span>${label}</span> <b>${escapeHtml(String(v))}</b></div>`).join('');
+  const footerNote = escapeHtml(sch.voucherFooter || '');
+  const contactLine = sch.phone || sch.email
+    ? `Queries: ${escapeHtml([sch.phone, sch.email].filter(Boolean).join(' · '))}` : '';
   return `
-  <div class="bulk-voucher-card">
-    <div class="bvc-head">
-      <div class="bvc-school">${schoolName}<div class="sub">${escapeHtml(sch.address || sch.slogan || '')}</div></div>
-      <div class="bvc-doctitle">FEE VOUCHER<div class="no">#${voucher.id.slice(-6).toUpperCase()} · ${voucher.month}</div></div>
-    </div>
-    <div class="bvc-meta">
-      <div>Student: <b>${escapeHtml(student.name)}</b></div>
-      <div>Roll No: <b>${escapeHtml(student.roll)}</b></div>
-      <div>Father/Guardian: <b>${escapeHtml(student.father)}</b></div>
-      <div>Class: <b>${escapeHtml(student.class)}${student.section ? ' ('+escapeHtml(student.section)+')' : ''}</b></div>
-    </div>
-    <table class="bvc-items">${itemsRows}</table>
-    <div class="bvc-totals">
-      <div class="row"><span>Subtotal</span><span>${money(grandTotal)}</span></div>
-      <div class="row"><span>Paid</span><span>${money(voucher.paid)}</span></div>
-      <div class="row grand"><span>Balance Due</span><span>${money(balanceDue)}</span></div>
-      <div class="row" style="margin-top:3px;"><span class="bvc-status">${status}</span><span></span></div>
+  <div class="bulk-voucher-card" data-status="${escapeHtml(status)}">
+    <div class="bvc-topbar"></div>
+    <div class="bvc-inner">
+      <div class="bvc-head">
+        <div class="bvc-brand">
+          <div class="bvc-crest">${crestLetter}</div>
+          <div class="bvc-school">${schoolName}<div class="sub">${escapeHtml(sch.address || sch.slogan || '')}</div></div>
+        </div>
+        <div class="bvc-doctitle">
+          <span class="tag">FEE VOUCHER</span>
+          <div class="no">#${voucher.id.slice(-6).toUpperCase()} · ${voucher.month}</div>
+          <div class="no">Issued ${escapeHtml(voucher.date || '')}</div>
+        </div>
+      </div>
+      <div class="bvc-studentline">${escapeHtml(student.name)}<span class="bvc-status ${statusClass}">${status}</span></div>
+      <div class="bvc-meta">
+        <div><span>Roll No</span> <b>${escapeHtml(student.roll)}</b></div>
+        <div><span>Class</span> <b>${escapeHtml(student.class)}${student.section ? ' ('+escapeHtml(student.section)+')' : ''}</b></div>
+        <div><span>Father/Guardian</span> <b>${escapeHtml(student.father)}</b></div>
+        ${extraMeta}
+      </div>
+      <div class="bvc-items-wrap">
+        <table class="bvc-items">
+          <thead><tr><th>Description</th><th>Amount</th></tr></thead>
+          <tbody>${itemsRows}</tbody>
+        </table>
+      </div>
+      <div class="bvc-totals">
+        <div class="row"><span>Subtotal</span><span>${money(grandTotal)}</span></div>
+        <div class="row"><span>Paid</span><span>${money(voucher.paid)}</span></div>
+        <div class="row grand"><span>Balance Due</span><span>${money(balanceDue)}</span></div>
+      </div>
+      <div class="bvc-words">Balance in words: ${escapeHtml(numberToWords(Math.max(0,balanceDue)))} Rupees Only</div>
+      ${footerNote ? `<div class="bvc-footernote">${footerNote}</div>` : ''}
+      <div class="bvc-foot">
+        <div class="bvc-sign"><div class="bvc-sign-line"></div><span>Guardian Signature</span></div>
+        <div class="bvc-sign"><div class="bvc-sign-line"></div><span>Authorized Signature</span></div>
+      </div>
+      <div class="bvc-note">${contactLine || 'Please retain this voucher for your records.'}</div>
     </div>
   </div>`;
 }
@@ -5202,7 +5662,7 @@ document.getElementById('bulkVoucherGenerateBtn').addEventListener('click', ()=>
   const month = document.getElementById('bulkV_month').value;
   const scope = document.getElementById('bulkV_scope').value;
   const cls = document.getElementById('bulkV_class').value;
-  const perPage = Number(document.getElementById('bulkV_perPage').value || 3);
+  const perPage = Number(document.getElementById('bulkV_perPage').value || 6);
   const hint = document.getElementById('bulkV_hint');
 
   if(!month){ toast('Select the voucher month/period'); return; }
@@ -5231,13 +5691,20 @@ document.getElementById('bulkVoucherGenerateBtn').addEventListener('click', ()=>
     if(createdCount>0){ saveVouchers(); saveStudents(); }
 
     // Group cards into fixed-size "sheets" — each sheet is one printed
-    // page via CSS page-break-after, set below through --bv-per-page.
+    // page via CSS page-break-after. 6-per-page lays out as a 2×3
+    // grid (--bv-cols:2, --bv-per-page rows:3); 2/3-per-page stay a
+    // single stacked column, just like before.
+    const cols = perPage >= 6 ? 2 : 1;
+    const rows = Math.ceil(perPage / cols);
+    const density = perPage >= 6 ? 'compact' : 'cozy';
     const sheets = [];
     for(let i=0;i<cards.length;i+=perPage){
-      sheets.push(`<div class="bulk-voucher-sheet" style="--bv-per-page:${perPage};">${cards.slice(i,i+perPage).join('')}</div>`);
+      sheets.push(`<div class="bulk-voucher-sheet" style="--bv-per-page:${rows};--bv-cols:${cols};">${cards.slice(i,i+perPage).join('')}</div>`);
     }
 
-    document.getElementById('printArea').innerHTML = sheets.join('');
+    const printArea = document.getElementById('printArea');
+    printArea.innerHTML = sheets.join('');
+    printArea.setAttribute('data-bv-density', density);
     closeBulkVoucherModal();
     currentWA = null; // bulk output has no single WhatsApp target
     openModal(false, true, 'bulk');
@@ -6426,7 +6893,7 @@ function printAdmissionLog(){
    ============================================================ */
 const ldgCombo = initCombobox('ldg_studentSearch','ldg_student','ldg_studentList', studentComboItems, (id)=>{
   ledgerViewMode = 'combined'; // reset the view filter whenever a different student is selected
-  renderLedger(id);
+  renderLedger(id, 'ledgerResult');
 });
 
 function computeLedgerEntries(studentId){
@@ -6465,24 +6932,31 @@ function computeStudentAttendanceHistory(studentId){
 }
 
 /* ---- Phase 4B: Ledger screen view modes — 'combined' (default, both
-   side-by-side), 'edu' (academic only), 'financial' (fees only). ---- */
+   side-by-side), 'edu' (academic only), 'financial' (fees only).
+   Generalized (see renderLedger below) to target either the standalone
+   Student Ledger tab's #ledgerResult, or the Fee Collection module's
+   own "📋 Student Khata / Ledger Search" sub-tab — same rendering
+   logic, two entry points, no duplicated markup to drift out of sync. ---- */
 let ledgerViewMode = 'combined';
+let ledgerActiveBoxId = 'ledgerResult';
 function setLedgerView(mode){
   ledgerViewMode = mode;
   applyLedgerViewMode();
 }
 function applyLedgerViewMode(){
-  const box = document.getElementById('ledgerResult');
+  const box = document.getElementById(ledgerActiveBoxId);
   if(!box) return;
   box.classList.remove('view-edu','view-financial','view-combined');
   box.classList.add('view-' + ledgerViewMode);
-  document.querySelectorAll('.ldg-view-btn').forEach(b=>{
+  document.querySelectorAll(`#${ledgerActiveBoxId} .ldg-view-btn`).forEach(b=>{
     b.classList.toggle('active', b.dataset.view === ledgerViewMode);
   });
 }
 
-function renderLedger(studentId){
-  const box = document.getElementById('ledgerResult');
+function renderLedger(studentId, boxId){
+  ledgerActiveBoxId = boxId || 'ledgerResult';
+  const box = document.getElementById(ledgerActiveBoxId);
+  if(!box) return;
   if(!studentId){
     box.innerHTML = `<p class="muted">Search and select a student above to view their ledger.</p>`;
     return;
@@ -7715,7 +8189,12 @@ function renderAll(){
   renderPeriodReport();
 }
 applyLanguage(currentLang);
-initAuth();
+// initAuth() is no longer called here — see "PHASE 10: License Activation
+// Gate" near the end of this script. That module needs ERPCrypto /
+// ERPDeviceFingerprint / ERPLicenseEngine / ERPExpiryGuard (Phases 1-4,
+// defined further down this same file) to already exist before it can
+// run, so the actual boot trigger — runLicenseGate().then(initAuth) —
+// lives after all of those are defined, not here.
 
 /* ============================================================
    PWA / OFFLINE APP-SHELL — Final Phase B
@@ -8708,6 +9187,13 @@ const ERPLicenseEngine = (function () {
       expiryDate: fields.expiryDate || null,
       deviceLimit: fields.deviceLimit,
       features: Array.isArray(fields.features) ? fields.features : [],
+      // Optional — added for the admin-side License Keys tab (package tier
+      // + human duration label + a short display serial like
+      // "ANJUM-PREM-2026-X8Y9Z"). All default so older callers/keys that
+      // predate these fields keep working unchanged.
+      tier: fields.tier || 'Standard',
+      durationLabel: fields.durationLabel || null,
+      serialCode: fields.serialCode || null,
       issuedAt: new Date().toISOString()
     };
   }
@@ -8817,6 +9303,53 @@ const ERPLicenseEngine = (function () {
     return { valid: true, record, error: null };
   }
 
+  /**
+   * deleteLicenseRecord(licenseId, secretPassphrase)
+   * Removes a locally-stored license record entirely. Used after a
+   * renewal that issued a brand-new licenseId, to clean up the old
+   * record instead of leaving an orphaned one behind.
+   */
+  function deleteLicenseRecord(licenseId) {
+    try { localStorage.removeItem(storageKeyFor(licenseId)); } catch (e) { /* ignore */ }
+  }
+
+  /**
+   * renewLicense(newLicenseKeyString, secretPassphrase, currentRecord)
+   * Distinct from activateLicense(): activateLicense() is first-time
+   * setup and deliberately leaves an existing record untouched if one
+   * is already stored (so a duplicate activation attempt can't wipe
+   * registered devices). renewLicense() is the opposite — it's what
+   * runs when a school's admin is handed a fresh key that's meant to
+   * REPLACE the current one (e.g. after an expiry), and it needs to
+   * actually take effect: expiry date, tier, feature set, etc. all
+   * update to whatever the new key says, while any already-registered
+   * device slots carry over unchanged (so renewing doesn't burn a
+   * fresh slot on the same machine, or force re-activation on every
+   * device already running this license).
+   *
+   * @param {string} newLicenseKeyString  output of issueLicenseKey()
+   * @param {string} secretPassphrase
+   * @param {object|null} currentRecord   the record being replaced, if any
+   * @returns {Promise<{ valid: boolean, record: object|null, error: string|null }>}
+   */
+  async function renewLicense(newLicenseKeyString, secretPassphrase, currentRecord) {
+    const result = await validateLicenseKey(newLicenseKeyString, secretPassphrase);
+    if (!result.valid) return { valid: false, record: null, error: result.error };
+
+    const carriedDevices = (currentRecord && Array.isArray(currentRecord.devices)) ? currentRecord.devices : [];
+    const record = { payload: result.payload, devices: carriedDevices };
+    await saveLicenseRecord(record, secretPassphrase);
+
+    // If the new key carries a different licenseId than the one it's
+    // replacing, drop the old stored record so it doesn't linger.
+    if (currentRecord && currentRecord.payload && currentRecord.payload.licenseId
+        && currentRecord.payload.licenseId !== record.payload.licenseId) {
+      deleteLicenseRecord(currentRecord.payload.licenseId);
+    }
+
+    return { valid: true, record, error: null };
+  }
+
   /* =======================================================================
      3. MULTI-DEVICE SLOT VERIFICATION
      ======================================================================= */
@@ -8835,12 +9368,25 @@ const ERPLicenseEngine = (function () {
         { deviceId: registered.deviceId, attributes: registered.attributes },
         { threshold }
       );
-      // matchDevice() generates a fresh fingerprint of "now" internally,
-      // which is only meaningful when called for the CURRENT device. Since
-      // we already have currentFingerprint in hand, do the same weighted
-      // comparison directly against it instead of re-fingerprinting.
+      // FIX (was a functional bug): matchDevice() compares `registered`'s
+      // stored attributes against a fresh fingerprint of "now" — which is
+      // exactly what we want, since this function is only ever called
+      // for the ACTUAL current device. The previous version ignored that
+      // result (comparison.isMatch) and instead re-compared
+      // comparison.currentFingerprint.deviceId against currentFingerprint.deviceId
+      // — but both of those are generated from "now", so that check was
+      // always true regardless of which `registered` entry it was being
+      // measured against. Net effect: the very first registered device
+      // in the list always matched, so a device-limit of 1 (or any N)
+      // never actually rejected a new machine once one device was
+      // registered — the exact sharing/anti-piracy protection this
+      // engine exists to provide. Using comparison.isMatch here is the
+      // real tolerant/weighted check (allows minor browser-update drift
+      // on the SAME machine) while still telling genuinely different
+      // devices apart. The exact deviceId check stays first as a cheap
+      // fast path.
       const sameDevice = registered.deviceId === currentFingerprint.deviceId
-        || comparison.currentFingerprint.deviceId === currentFingerprint.deviceId;
+        || comparison.isMatch;
       if (sameDevice) return registered;
     }
     return null;
@@ -9014,6 +9560,8 @@ const ERPLicenseEngine = (function () {
     loadLicenseRecord,
     saveLicenseRecord,
     activateLicense,
+    renewLicense,
+    deleteLicenseRecord,
 
     // Device slots
     registerDeviceSlot,
@@ -9436,6 +9984,30 @@ const ERPExpiryGuard = (function () {
         const key = input.value.trim();
         errorEl.textContent = '';
         if (!key) { errorEl.textContent = 'Please enter a license key.'; return; }
+        // Deployment-config guard: LICENSE_SIGNING_SECRET ships as an
+        // obvious CHANGE-ME placeholder that has to be manually set to
+        // match the admin panel's saved passphrase before this
+        // installation can activate ANY key. Left unset, every single
+        // key — however correctly copied — fails decryption with the
+        // same generic "invalid key or wrong passphrase" message below,
+        // which looks exactly like a bad copy/paste and sends people
+        // chasing the wrong problem. Catch the unconfigured case by name
+        // so it's obvious immediately instead of after a config check.
+        if (typeof LICENSE_SIGNING_SECRET === 'string' && LICENSE_SIGNING_SECRET.startsWith('CHANGE-ME')) {
+          errorEl.textContent = 'This installation has never had its signing passphrase configured (LICENSE_SIGNING_SECRET is still the default placeholder), so no key can activate yet — that\'s almost certainly why this is failing, not the key itself. An administrator needs to set it in the file to match the admin panel\'s saved passphrase.';
+          return;
+        }
+        // Common mix-up: the admin panel also shows a short human-readable
+        // "Reference ID" (e.g. "ANJUM-STD-2026-07330") for its own tracking
+        // table — it looks key-shaped but isn't the encrypted license key,
+        // so decrypting it always fails. Catch that specific shape here and
+        // say so directly instead of the generic decrypt-failure message,
+        // since that's exactly the confusion this format invites.
+        const looksLikeReferenceId = key.length < 40 && /^[A-Z0-9]+(-[A-Z0-9]+){2,5}$/i.test(key) && !/[+/=]/.test(key);
+        if (looksLikeReferenceId) {
+          errorEl.textContent = 'That looks like the short Reference ID, not the actual license key. Ask your administrator for the long key from the "📋 Copy Key" button in the admin panel — it\'s much longer than this.';
+          return;
+        }
         btn.disabled = true;
         btn.textContent = 'Verifying…';
         try {
@@ -12147,6 +12719,210 @@ if (typeof window !== 'undefined') {
     studentInfo.insertAdjacentElement('afterend', hint);
   });
 })();
+
+/* ============================== PHASE 10 ==============================
+   License Activation Gate — wires Phases 1-4 (ERPCrypto,
+   ERPDeviceFingerprint, ERPLicenseEngine, ERPExpiryGuard) into an
+   actual pre-login gate. Those four modules were fully built above but
+   nothing in the app ever called them — this is that missing call
+   site: it blocks the login screen behind a license check, and boots
+   the normal app (initAuth → showLogin/session restore) only once that
+   check passes.
+   ========================================================================= */
+
+// Must match the passphrase set in the Admin Command Center's License
+// Keys tab ("🔏 License Signing Passphrase"). Change this before
+// distributing this file to a client and keep the two in sync — every
+// key issued to this school will fail to validate otherwise.
+const LICENSE_SIGNING_SECRET = 'Kwaqas5533$.';
+
+const LICENSE_ACTIVE_ID_KEY = 'erp_active_license_id';
+const LICENSE_EXPIRY_BANNER_DAYS = 5; // show the warning banner at <=5 days left
+
+function licenseGate_getStoredId(){
+  try{ return localStorage.getItem(LICENSE_ACTIVE_ID_KEY); }catch(e){ return null; }
+}
+function licenseGate_setStoredId(id){
+  try{
+    if(id) localStorage.setItem(LICENSE_ACTIVE_ID_KEY, id);
+    else localStorage.removeItem(LICENSE_ACTIVE_ID_KEY);
+  }catch(e){ /* localStorage unavailable — license state just won't persist across reloads */ }
+}
+
+let _licenseGate_deviceFp = null;
+async function licenseGate_device(){
+  if(!_licenseGate_deviceFp) _licenseGate_deviceFp = await ERPDeviceFingerprint.generateFingerprint();
+  return _licenseGate_deviceFp;
+}
+
+/** First-time activation, or a fresh key entered on a device that isn't
+ *  registered yet under the currently-stored license. */
+async function licenseGate_activate(keyString){
+  const activation = await ERPLicenseEngine.activateLicense(keyString, LICENSE_SIGNING_SECRET);
+  if(!activation.valid) return { success:false, error: activation.error };
+  const device = await licenseGate_device();
+  const reg = await ERPLicenseEngine.registerDeviceSlot(activation.record, device);
+  if(!reg.success && !reg.alreadyRegistered) return { success:false, error: reg.error };
+  await ERPLicenseEngine.saveLicenseRecord(reg.record, LICENSE_SIGNING_SECRET);
+  licenseGate_setStoredId(reg.record.payload.licenseId);
+  return { success:true, record: reg.record };
+}
+
+/** Renewal: a new key for a license this device may already hold a
+ *  slot under. Keeps the existing device list intact (so renewing
+ *  doesn't burn a fresh slot or force re-activation on every machine
+ *  already running this license) and also registers THIS device if it
+ *  isn't already on the list (covers "license moved to a new install"). */
+async function licenseGate_renew(keyString, currentRecord){
+  const renewal = await ERPLicenseEngine.renewLicense(keyString, LICENSE_SIGNING_SECRET, currentRecord);
+  if(!renewal.valid) return { success:false, error: renewal.error };
+  const device = await licenseGate_device();
+  const reg = await ERPLicenseEngine.registerDeviceSlot(renewal.record, device);
+  if(!reg.success && !reg.alreadyRegistered){
+    // Renewed the license fields but this device didn't get a slot
+    // (e.g. limit already full of OTHER devices) — still save the
+    // renewed record so expiry/tier are current, but surface the error
+    // so the person knows this particular machine isn't authorized.
+    await ERPLicenseEngine.saveLicenseRecord(renewal.record, LICENSE_SIGNING_SECRET);
+    licenseGate_setStoredId(renewal.record.payload.licenseId);
+    return { success:false, error: reg.error };
+  }
+  await ERPLicenseEngine.saveLicenseRecord(reg.record, LICENSE_SIGNING_SECRET);
+  licenseGate_setStoredId(reg.record.payload.licenseId);
+  return { success:true, record: reg.record };
+}
+
+/** Persistent (non-toast, non-dismissing) banner shown on the
+ *  dashboard once logged in, while <=LICENSE_EXPIRY_BANNER_DAYS remain.
+ *  Distinct from ERPExpiryGuard's grace-period toast, which only ever
+ *  fires AFTER expiry — this fires BEFORE, so the school has advance
+ *  warning instead of finding out the day the system locks. */
+function licenseGate_showExpiryBanner(daysUntilExpiry){
+  let bar = document.getElementById('licenseExpiryBanner');
+  if(!bar){
+    bar = document.createElement('div');
+    bar.id = 'licenseExpiryBanner';
+    bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:5000;background:#fdf2e0;color:#7a5300;'
+      + 'border-bottom:1px solid #f0d9a8;padding:8px 16px;font-size:13px;font-weight:600;'
+      + 'text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.08);'
+      + 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;';
+    document.body.insertBefore(bar, document.body.firstChild);
+  }
+  const dayWord = daysUntilExpiry === 1 ? 'day' : 'days';
+  bar.textContent = daysUntilExpiry <= 0
+    ? '⚠ Your license expires today. Contact your system administrator for a renewal key.'
+    : `⚠ Your license expires in ${daysUntilExpiry} ${dayWord}. Contact your system administrator for a renewal key.`;
+  bar.style.display = '';
+}
+function licenseGate_hideExpiryBanner(){
+  const bar = document.getElementById('licenseExpiryBanner');
+  if(bar) bar.style.display = 'none';
+}
+
+/** The gate itself — resolves once a currently-valid, currently-
+ *  registered license is confirmed for this device. Everything it
+ *  shows (first activation / device-not-authorized / expired /
+ *  clock-tamper) reuses ERPExpiryGuard.showLockOverlay so there's one
+ *  consistent full-screen "enter a key" UI for every case instead of
+ *  four different modals. */
+async function runLicenseGate(){
+  const licenseId = licenseGate_getStoredId();
+
+  // --- Case 1: no license activated on this install at all yet ---
+  if(!licenseId){
+    return new Promise(resolve=>{
+      ERPExpiryGuard.showLockOverlay({
+        kind: 'expired',
+        title: 'Activate Your License',
+        message: 'Enter your license key to activate this installation.',
+        onRenewalSubmit: async (key)=>{
+          const result = await licenseGate_activate(key);
+          if(result.success) resolve();
+          return result.success ? { success:true } : { success:false, error: result.error };
+        }
+      });
+    });
+  }
+
+  const record = await ERPLicenseEngine.loadLicenseRecord(licenseId, LICENSE_SIGNING_SECRET);
+  if(!record){
+    // Pointer existed but the encrypted record behind it is gone/corrupt
+    // (e.g. localStorage cleared) — fall back to first-activation.
+    licenseGate_setStoredId(null);
+    return runLicenseGate();
+  }
+
+  const device = await licenseGate_device();
+  const status = await ERPLicenseEngine.isLicenseValid(record, device);
+
+  // --- Case 2: license is fine, but THIS device isn't one of its
+  //     registered slots (moved install, or limit was raised remotely) ---
+  if(!status.expired && !status.deviceRegistered){
+    return new Promise(resolve=>{
+      ERPExpiryGuard.showLockOverlay({
+        kind: 'expired',
+        title: 'Device Not Authorized',
+        message: 'This device is not registered under the active license. Enter a valid license key to authorize it.',
+        onRenewalSubmit: async (key)=>{
+          const result = await licenseGate_renew(key, record);
+          if(result.success) resolve();
+          return result.success ? { success:true } : { success:false, error: result.error };
+        }
+      });
+    });
+  }
+
+  // --- Case 3: clock-tamper / expiry / grace-period, all handled by
+  //     ERPExpiryGuard's own orchestrator ---
+  const protection = await ERPExpiryGuard.runProtectionChecks(record, {
+    onRenewalSubmit: async (key)=>{
+      const result = await licenseGate_renew(key, record);
+      return result.success ? { success:true } : { success:false, error: result.error };
+    }
+  });
+
+  if(protection.blocked){
+    // A lock overlay is already showing (tamper explanation, or the
+    // expired+renewal-key form). Wait for it to be dismissed — which
+    // only happens on a successful recheck/renewal — then re-run the
+    // whole gate from scratch to confirm the new state before letting
+    // the app continue.
+    await new Promise(resolve=>{
+      const iv = setInterval(()=>{
+        if(!document.getElementById('erp-expiry-guard-overlay')){ clearInterval(iv); resolve(); }
+      }, 400);
+    });
+    return runLicenseGate();
+  }
+
+  // --- Not blocked, but maybe inside the pre-expiry warning window ---
+  const expiryStatus = await ERPExpiryGuard.checkExpiryStatus(record);
+  if(expiryStatus.status === 'valid' && expiryStatus.daysUntilExpiry !== null
+     && expiryStatus.daysUntilExpiry <= LICENSE_EXPIRY_BANNER_DAYS){
+    const showBanner = () => licenseGate_showExpiryBanner(expiryStatus.daysUntilExpiry);
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showBanner);
+    else showBanner();
+  } else {
+    licenseGate_hideExpiryBanner();
+  }
+}
+
+/* Re-checks the license periodically while the app stays open, so an
+   expiry (or a remote change) takes effect without needing a reload.
+   runLicenseGate() itself puts up the lock overlay as needed; here we
+   only need to fire it and let it do its thing. */
+setInterval(()=>{ runLicenseGate().catch(e=>console.error('[LicenseGate] periodic check failed:', e)); }, 5 * 60 * 1000);
+
+// --- Actual boot trigger, replacing the old top-of-file `initAuth();` ---
+// If the gate throws for a reason that ISN'T a licensing decision (e.g.
+// WebCrypto genuinely unavailable in this browser), fail OPEN rather
+// than bricking a paying customer over an environment bug — log it and
+// let the app start normally, same "degrade, don't break" posture as
+// ERPDeviceFingerprint's own error handling elsewhere in this file.
+runLicenseGate().then(initAuth).catch(err=>{
+  console.error('[LicenseGate] gate check failed unexpectedly — starting app without it:', err);
+  initAuth();
+});
 
 </script>
 
